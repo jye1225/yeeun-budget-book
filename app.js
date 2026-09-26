@@ -922,3 +922,11 @@ byId("balance-modal").addEventListener("click", (event) => {
 });
 
 render();
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js")
+      .then(() => document.documentElement.setAttribute("data-pwa-ready", "true"))
+      .catch(() => document.documentElement.setAttribute("data-pwa-ready", "false"));
+  });
+}

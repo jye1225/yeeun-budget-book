@@ -273,7 +273,7 @@ svg {
 .bottom-nav {
   position: fixed;
   left: 50%;
-  bottom: 18px;
+  bottom: max(18px, env(safe-area-inset-bottom));
   z-index: 20;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -304,7 +304,7 @@ svg {
 .floating-add {
   position: fixed;
   right: max(18px, calc((100vw - 1080px) / 2 + 24px));
-  bottom: 108px;
+  bottom: calc(108px + env(safe-area-inset-bottom));
   z-index: 18;
   display: grid;
   width: 58px;

@@ -10,7 +10,9 @@ const types = {
   ".css": "text/css; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
   ".json": "application/json; charset=utf-8",
-  ".svg": "image/svg+xml"
+  ".webmanifest": "application/manifest+json; charset=utf-8",
+  ".svg": "image/svg+xml",
+  ".png": "image/png"
 };
 
 const server = createServer((request, response) => {
@@ -25,7 +27,9 @@ const server = createServer((request, response) => {
     return;
   }
 
-  response.writeHead(200, { "Content-Type": types[extname(filePath)] || "application/octet-stream" });
+  const headers = { "Content-Type": types[extname(filePath)] || "application/octet-stream" };
+  if (safePath === "/sw.js") headers["Cache-Control"] = "no-cache";
+  response.writeHead(200, headers);
   createReadStream(filePath).pipe(response);
 });
 
