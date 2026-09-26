@@ -404,6 +404,7 @@ svg {
 .report-overview,
 .calendar-panel,
 .analysis-panel,
+.report-detail-panel,
 .settings-card {
   border-radius: 28px;
   background: white;
@@ -500,13 +501,30 @@ svg {
   letter-spacing: 0;
 }
 
-.calendar-day span {
+.calendar-day > span {
   display: block;
-  margin-top: 7px;
+  min-height: 1.25em;
+  margin-top: 4px;
   color: #9ca2aa;
-  font-size: 0.72rem;
-  line-height: 1.24;
+  font-size: 0.66rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.calendar-day .calendar-expense {
+  margin-top: 2px;
+}
+
+.calendar-amount-full,
+.calendar-amount-compact {
+  display: block;
+}
+
+.calendar-amount-compact {
+  display: none;
 }
 
 .calendar-day .income {
@@ -520,6 +538,137 @@ svg {
 .analysis-panel {
   padding: 26px 22px;
   margin-bottom: 18px;
+}
+
+.report-detail-panel {
+  padding: 26px 22px;
+  margin-bottom: 18px;
+}
+
+.report-detail-header,
+.category-history-header,
+.history-category-title,
+.report-transaction {
+  display: flex;
+  align-items: center;
+}
+
+.report-detail-header,
+.category-history-header {
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.report-detail-header {
+  padding-bottom: 22px;
+}
+
+.report-detail-header h2 {
+  margin: 7px 0 0;
+  font-size: 1.35rem;
+}
+
+.report-detail-header > span {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-weight: 550;
+}
+
+.report-detail-list {
+  border-top: 1px solid var(--line);
+}
+
+.category-history-group {
+  padding: 22px 0;
+}
+
+.category-history-group + .category-history-group {
+  border-top: 1px solid var(--line);
+}
+
+.category-history-header {
+  padding-bottom: 14px;
+}
+
+.history-category-title {
+  min-width: 0;
+  gap: 9px;
+}
+
+.history-category-title > strong {
+  font-size: 1.08rem;
+}
+
+.history-category-title > span {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.category-history-list {
+  border-top: 1px solid #f0f2f5;
+}
+
+.report-transaction {
+  min-height: 68px;
+  gap: 14px;
+  border-bottom: 1px solid #f0f2f5;
+}
+
+.report-transaction time {
+  width: 38px;
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+
+.report-transaction-copy {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  gap: 4px;
+}
+
+.report-transaction-copy strong,
+.report-transaction-copy span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.report-transaction-copy span {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.report-transaction > strong {
+  flex: 0 0 auto;
+  font-size: 1.02rem;
+  white-space: nowrap;
+}
+
+.income {
+  color: var(--blue);
+}
+
+.expense {
+  color: var(--red);
+}
+
+.report-more-button {
+  width: 100%;
+  min-height: 44px;
+  margin-top: 10px;
+  border-radius: 14px;
+  color: #327eaf;
+  background: #eef7fc;
+  font-weight: 550;
+}
+
+.report-detail-panel[hidden],
+.calendar-panel[hidden],
+.analysis-panel[hidden] {
+  display: none;
 }
 
 .analysis-panel h2 {
@@ -990,12 +1139,38 @@ svg {
     font-size: 2.55rem;
   }
 
+  .report-detail-panel {
+    padding: 22px 18px;
+  }
+
+  .report-transaction {
+    gap: 10px;
+  }
+
+  .report-transaction > strong {
+    font-size: 0.95rem;
+  }
+
   .entry-controls {
     grid-template-columns: 1fr;
   }
 
   .calendar-day {
     min-height: 82px;
+  }
+
+  .calendar-day > span {
+    overflow: visible;
+    text-overflow: clip;
+  }
+
+  .calendar-amount-full {
+    display: none;
+  }
+
+  .calendar-amount-compact {
+    display: block;
+    font-size: 0.62rem;
   }
 }
 

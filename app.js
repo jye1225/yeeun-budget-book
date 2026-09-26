@@ -1,5 +1,6 @@
 const STORAGE_KEY = "yeeun-budget-book-state-v3";
 const todayISO = "2026-09-26";
+const REPORT_CATEGORY_LIMIT = 10;
 
 const colorPalette = ["#3a91ff", "#ff8b18", "#12bd82", "#d8dde3", "#8e7dff", "#ff6776", "#2bb6c4"];
 
@@ -75,6 +76,7 @@ const seedState = {
 };
 
 let state = loadState();
+const expandedReportCategories = new Set();
 let entry = {
   id: null,
   type: "expense",
@@ -133,6 +135,14 @@ function compactMoney(value) {
   const abs = Math.abs(value);
   if (abs >= 100000000) return `${sign}${Math.round(abs / 100000000)}억`;
   if (abs >= 10000) return `${sign}${Math.round(abs / 10000)}만원`;
+  return `${sign}${abs.toLocaleString("ko-KR")}`;
+}
+
+function calendarMoney(value) {
+  const sign = value > 0 ? "+" : value < 0 ? "-" : "";
+  const abs = Math.abs(value);
+  if (abs >= 100000000) return `${sign}${(abs / 100000000).toFixed(1).replace(/\.0$/, "")}억`;
+  if (abs >= 10000) return `${sign}${(abs / 10000).toFixed(1).replace(/\.0$/, "")}만`;
   return `${sign}${abs.toLocaleString("ko-KR")}`;
 }
 
@@ -240,7 +250,6 @@ function renderHome() {
 
 function renderReport() {
   const month = state.reportMonth;
-  const transactions = transactionsForMonth(month, state.reportFilter);
   const allMonthTransactions = transactionsForMonth(month);
   const income = sumTransactions(allMonthTransactions, "income");
   const expense = sumTransactions(allMonthTransactions, "expense");
@@ -252,12 +261,25 @@ function renderReport() {
   byId("month-income").textContent = money(income, true);
   byId("month-expense").textContent = money(-expense, true);
   byId("month-compare-copy").innerHTML = compareCopy(diff, lastExpense);
-  renderCalendar(month, transactions);
-  renderCategoryAnalysis(month, "expense");
-  renderCategoryAnalysis(month, "income");
+
+  const isAllReport = state.reportFilter === "all";
+  document.querySelector(".calendar-panel").hidden = !isAllReport;
+  byId("analysis-panel").hidden = !isAllReport;
+  byId("income-analysis-panel").hidden = !isAllReport;
+  byId("report-detail-panel").hidden = isAllReport;
+
+  if (isAllReport) {
+    renderCalendar(month, allMonthTransactions);
+    renderCategoryAnalysis(month, "expense");
+    renderCategoryAnalysis(month, "income");
+  } else {
+    renderDetailedReport(month, state.reportFilter);
+  }
 
   document.querySelectorAll(".report-tabs button").forEach((button) => {
-    button.classList.toggle("is-active", button.dataset.filter === state.reportFilter);
+    const isActive = button.dataset.filter === state.reportFilter;
+    button.classList.toggle("is-active", isActive);
+    button.setAttribute("aria-selected", String(isActive));
   });
 }
 
@@ -285,11 +307,22 @@ function renderCalendar(month, transactions) {
     const expense = sumTransactions(dayTransactions, "expense");
     const todayClass = date === todayISO ? " is-today" : "";
     const disabled = dayTransactions.length ? "" : " disabled";
+    const amountLabel = [
+      `${day}일`,
+      income ? `수입 ${money(income)}` : "",
+      expense ? `지출 ${money(expense)}` : ""
+    ].filter(Boolean).join(", ");
     cells.push(`
-      <button class="calendar-day${todayClass}" type="button" data-action="open-day" data-date="${date}"${disabled}>
+      <button class="calendar-day${todayClass}" type="button" data-action="open-day" data-date="${date}" aria-label="${amountLabel}"${disabled}>
         <strong>${day}</strong>
-        ${income ? `<span class="income">+${income.toLocaleString("ko-KR")}</span>` : ""}
-        ${expense ? `<span class="expense">-${expense.toLocaleString("ko-KR")}</span>` : ""}
+        <span class="calendar-income income">
+          <span class="calendar-amount-full">${income ? `+${income.toLocaleString("ko-KR")}` : ""}</span>
+          <span class="calendar-amount-compact" aria-hidden="true">${income ? calendarMoney(income) : ""}</span>
+        </span>
+        <span class="calendar-expense expense">
+          <span class="calendar-amount-full">${expense ? `-${expense.toLocaleString("ko-KR")}` : ""}</span>
+          <span class="calendar-amount-compact" aria-hidden="true">${expense ? calendarMoney(-expense) : ""}</span>
+        </span>
       </button>
     `);
   }
@@ -342,6 +375,77 @@ function categoryTotals(month, type) {
     totals.set(category.id, current);
   });
   return [...totals.values()].sort((a, b) => b.amount - a.amount);
+}
+
+function renderDetailedReport(month, type) {
+  const typeLabel = type === "expense" ? "지출" : "수입";
+  const transactions = transactionsForMonth(month, type)
+    .slice()
+    .sort((a, b) => b.date.localeCompare(a.date));
+  const totals = categoryTotals(month, type);
+
+  byId("report-detail-eyebrow").textContent = `${typeLabel} 내역`;
+  byId("report-detail-title").textContent = "카테고리별 상세 내역";
+  byId("report-detail-count").textContent = `총 ${transactions.length}건`;
+
+  if (!transactions.length) {
+    byId("report-detail-list").innerHTML = `<p class="empty-text">이 달의 ${typeLabel} 내역이 없어요.</p>`;
+    return;
+  }
+
+  byId("report-detail-list").innerHTML = totals
+    .map((category) => {
+      const categoryTransactions = transactions.filter((transaction) => transaction.categoryId === category.id);
+      const categoryKey = `${month}:${type}:${category.id}`;
+      const isExpanded = expandedReportCategories.has(categoryKey);
+      const visibleTransactions = isExpanded
+        ? categoryTransactions
+        : categoryTransactions.slice(0, REPORT_CATEGORY_LIMIT);
+      const remainingCount = categoryTransactions.length - REPORT_CATEGORY_LIMIT;
+
+      return `
+        <section class="category-history-group">
+          <header class="category-history-header">
+            <div class="history-category-title">
+              <i class="dot" style="background:${category.color}"></i>
+              <strong>${escapeHTML(category.name)}</strong>
+              <span>${categoryTransactions.length}건</span>
+            </div>
+            <strong>${money(category.amount)}</strong>
+          </header>
+          <div class="category-history-list">
+            ${visibleTransactions.map((transaction) => renderReportTransaction(transaction)).join("")}
+          </div>
+          ${remainingCount > 0 ? `
+            <button class="report-more-button" type="button" data-action="toggle-category-history" data-category-key="${escapeHTML(categoryKey)}" aria-expanded="${isExpanded}">
+              ${isExpanded ? "접기" : `${remainingCount}개 더 보기`}
+            </button>
+          ` : ""}
+        </section>
+      `;
+    })
+    .join("");
+}
+
+function renderReportTransaction(transaction) {
+  const category = getCategory(transaction.type, transaction.categoryId);
+  const account = getAccount(transaction.accountId);
+  const signedAmount = transaction.type === "income" ? transaction.amount : -transaction.amount;
+  const [, month, day] = transaction.date.split("-");
+
+  return `
+    <div class="report-transaction">
+      <time datetime="${transaction.date}">${Number(month)}.${Number(day)}</time>
+      <div class="report-transaction-copy">
+        <strong>${escapeHTML(transaction.memo || category.name)}</strong>
+        <span>${escapeHTML(account?.name ?? "계좌")}</span>
+      </div>
+      <strong class="${transaction.type}">${money(signedAmount, true)}</strong>
+      <button class="edit-transaction-button" type="button" data-action="edit-transaction" data-transaction-id="${escapeHTML(transaction.id)}" aria-label="${escapeHTML(category.name)} 내역 수정" title="내역 수정">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
+      </button>
+    </div>
+  `;
 }
 
 function renderSettings() {
@@ -680,6 +784,11 @@ document.addEventListener("click", (event) => {
   if (action === "next-month") state.reportMonth = nextMonth(state.reportMonth);
   if (action === "open-day") openDay(button.dataset.date);
   if (action === "edit-transaction") openEditTransaction(button.dataset.transactionId);
+  if (action === "toggle-category-history") {
+    const categoryKey = button.dataset.categoryKey;
+    if (expandedReportCategories.has(categoryKey)) expandedReportCategories.delete(categoryKey);
+    else expandedReportCategories.add(categoryKey);
+  }
   if (action === "close-day") closeDay();
   if (action === "open-account-manager") {
     state.selectedView = "settings";
