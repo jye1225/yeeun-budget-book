@@ -18,7 +18,7 @@
       crossorigin
       href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
     />
-    <link rel="stylesheet" href="./styles.css?v=16" />
+    <link rel="stylesheet" href="./styles.css?v=17" />
   </head>
   <body>
     <div class="app-shell">
@@ -44,6 +44,54 @@
           </div>
           <div class="account-list" id="account-list"></div>
           <button class="wide-add" type="button" data-action="open-add-account">+ 계좌 추가하기</button>
+        </section>
+
+        <section class="view view-account-detail" id="account-view" aria-labelledby="account-detail-title">
+          <header class="account-detail-topbar">
+            <button class="icon-button" type="button" data-action="close-account-detail" aria-label="계좌 목록으로 돌아가기">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18 9 12l6-6" /></svg>
+            </button>
+            <div class="month-pill account-month-pill">
+              <button type="button" data-action="prev-account-month" aria-label="이전 달">‹</button>
+              <strong id="account-month-label">2026-09</strong>
+              <button type="button" data-action="next-account-month" aria-label="다음 달">›</button>
+            </div>
+            <button class="icon-button account-add-button" type="button" data-action="open-account-transaction" aria-label="이 계좌에 내역 추가">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+            </button>
+          </header>
+
+          <section class="account-detail-hero">
+            <span id="account-detail-title">계좌</span>
+            <strong id="account-detail-balance">0원</strong>
+            <div class="account-month-flow">
+              <div>
+                <span>수입</span>
+                <strong class="income" id="account-month-income">+0원</strong>
+              </div>
+              <div>
+                <span>지출</span>
+                <strong class="expense" id="account-month-expense">-0원</strong>
+              </div>
+            </div>
+          </section>
+
+          <div class="account-detail-toolbar">
+            <div class="account-filter-tabs" role="tablist" aria-label="계좌 내역 필터">
+              <button class="is-active" type="button" role="tab" data-account-filter="all">전체</button>
+              <button type="button" role="tab" data-account-filter="income">수입</button>
+              <button type="button" role="tab" data-account-filter="expense">지출</button>
+            </div>
+            <button class="inline-link" type="button" data-action="open-account-report">월별 리포트</button>
+          </div>
+
+          <section class="account-history-panel">
+            <header>
+              <h2>거래 내역</h2>
+              <span id="account-transaction-count">총 0건</span>
+            </header>
+            <div class="account-history-list" id="account-history-list"></div>
+          </section>
         </section>
 
         <section class="view view-report" id="report-view" aria-labelledby="report-title">
@@ -317,6 +365,6 @@
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="./supabase-config.js?v=1"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="./app.js?v=17"></script>
+    <script src="./app.js?v=18"></script>
   </body>
 </html>

@@ -36,6 +36,7 @@ const seedState = {
 };
 
 let state = loadState();
+if (state.selectedView === "account") state.selectedView = "home";
 const clientId = getClientId();
 const expandedReportCategories = new Set();
 let cloudClient = null;
@@ -58,6 +59,12 @@ let entry = {
   accountId: state.accounts[0]?.id ?? "",
   categoryId: state.categories.expense[0]?.id ?? "",
   memo: ""
+};
+
+let accountDetail = {
+  accountId: "",
+  month: todayISO.slice(0, 7),
+  filter: "all"
 };
 
 let balanceAdjustment = {
@@ -242,6 +249,7 @@ function getAccount(accountId) {
 function render() {
   renderNavigation();
   renderHome();
+  renderAccountDetail();
   renderReport();
   renderSettings();
   renderEntrySheet();
@@ -253,7 +261,8 @@ function renderNavigation() {
   document.querySelectorAll(".view").forEach((view) => view.classList.remove("is-active"));
   byId(`${state.selectedView}-view`)?.classList.add("is-active");
   document.querySelectorAll(".bottom-nav button").forEach((button) => {
-    button.classList.toggle("is-active", button.dataset.view === state.selectedView);
+    const activeView = state.selectedView === "account" ? "home" : state.selectedView;
+    button.classList.toggle("is-active", button.dataset.view === activeView);
   });
   document.querySelector(".floating-add")?.classList.toggle("is-hidden", state.selectedView === "home" || !state.accounts.length);
 }
@@ -267,11 +276,13 @@ function renderHome() {
   byId("account-list").innerHTML = state.accounts.length
     ? state.accounts.map((account, index) => `
       <article class="account-card${state.hideBalance ? " is-hidden-balance" : ""}">
-        <header>
-          <h2>${escapeHTML(account.name)}</h2>
-          <span class="menu-dot">•••</span>
-        </header>
-        <strong class="account-balance">${state.hideBalance ? hiddenBalanceMessages[index % hiddenBalanceMessages.length] : money(account.balance, account.balance < 0)}</strong>
+        <button class="account-summary-button" type="button" data-action="open-account-detail" data-account-id="${account.id}" aria-label="${escapeHTML(account.name)} 상세 내역 보기">
+          <span class="account-card-heading">
+            <h2>${escapeHTML(account.name)}</h2>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+          </span>
+          <strong class="account-balance">${state.hideBalance ? hiddenBalanceMessages[index % hiddenBalanceMessages.length] : money(account.balance, account.balance < 0)}</strong>
+        </button>
         <div class="divider"></div>
         <div class="account-actions">
           <button class="pill-button secondary" type="button" data-action="adjust-account" data-account-id="${account.id}">잔액 맞추기</button>
@@ -285,6 +296,71 @@ function renderHome() {
         <span>첫 계좌를 추가하고 가계부를 시작해 보세요.</span>
       </div>
     `;
+}
+
+function renderAccountDetail() {
+  const account = getAccount(accountDetail.accountId);
+  if (!account) {
+    byId("account-detail-title").textContent = "계좌";
+    byId("account-detail-balance").textContent = "0원";
+    byId("account-month-income").textContent = "+0원";
+    byId("account-month-expense").textContent = "-0원";
+    byId("account-transaction-count").textContent = "총 0건";
+    byId("account-history-list").innerHTML = `<p class="empty-text">계좌를 선택하면 내역이 보여요.</p>`;
+    return;
+  }
+
+  const monthTransactions = state.transactions
+    .filter((transaction) => transaction.accountId === account.id && monthOf(transaction.date) === accountDetail.month)
+    .sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
+  const visibleTransactions = accountDetail.filter === "all"
+    ? monthTransactions
+    : monthTransactions.filter((transaction) => transaction.type === accountDetail.filter);
+  const income = sumTransactions(monthTransactions, "income");
+  const expense = sumTransactions(monthTransactions, "expense");
+
+  byId("account-month-label").textContent = accountDetail.month;
+  byId("account-detail-title").textContent = account.name;
+  byId("account-detail-balance").textContent = state.hideBalance ? "잔액 숨김" : money(account.balance, account.balance < 0);
+  byId("account-month-income").textContent = money(income, true);
+  byId("account-month-expense").textContent = money(-expense, true);
+  byId("account-transaction-count").textContent = `총 ${visibleTransactions.length}건`;
+
+  document.querySelectorAll("[data-account-filter]").forEach((button) => {
+    const isActive = button.dataset.accountFilter === accountDetail.filter;
+    button.classList.toggle("is-active", isActive);
+    button.setAttribute("aria-selected", String(isActive));
+  });
+
+  byId("account-history-list").innerHTML = visibleTransactions.length
+    ? visibleTransactions.map((transaction) => renderAccountTransaction(transaction)).join("")
+    : `<p class="empty-text">이 달의 ${accountDetail.filter === "all" ? "거래" : accountDetail.filter === "income" ? "수입" : "지출"} 내역이 없어요.</p>`;
+}
+
+function renderAccountTransaction(transaction) {
+  const category = getCategory(transaction.type, transaction.categoryId);
+  const signedAmount = transaction.type === "income" ? transaction.amount : -transaction.amount;
+  const dateLabel = new Intl.DateTimeFormat("ko-KR", { month: "long", day: "numeric" }).format(new Date(`${transaction.date}T00:00:00`));
+  return `
+    <button class="account-transaction-row" type="button" data-action="edit-transaction" data-transaction-id="${escapeHTML(transaction.id)}">
+      <i class="category-mark" style="background:${category.color}" aria-hidden="true"></i>
+      <span class="account-transaction-copy">
+        <strong>${escapeHTML(transaction.memo || category.name)}</strong>
+        <span>${dateLabel} · ${escapeHTML(category.name)}</span>
+      </span>
+      <strong class="account-transaction-amount ${transaction.type}">${money(signedAmount, true)}</strong>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+    </button>
+  `;
+}
+
+function openAccountDetail(accountId) {
+  if (!getAccount(accountId)) return;
+  accountDetail.accountId = accountId;
+  accountDetail.month = todayISO.slice(0, 7);
+  accountDetail.filter = "all";
+  state.selectedView = "account";
+  render();
 }
 
 function renderReport() {
@@ -687,7 +763,13 @@ function saveTransaction() {
     state.transactions.push(transaction);
   }
   applyTransactionToAccount(transaction, 1);
-  state.reportMonth = monthOf(entry.date);
+  const transactionMonth = monthOf(transaction.date);
+  state.reportMonth = transactionMonth;
+  if (state.selectedView === "account") {
+    accountDetail.accountId = transaction.accountId;
+    accountDetail.month = transactionMonth;
+    accountDetail.filter = "all";
+  }
   closeTransaction();
   toast(existingTransaction ? "내역을 수정했어요." : "기록을 추가했어요.");
   render();
@@ -1125,6 +1207,16 @@ document.addEventListener("click", (event) => {
   const action = button.dataset.action;
   if (!action) return;
 
+  if (action === "open-account-detail") openAccountDetail(button.dataset.accountId);
+  if (action === "close-account-detail") state.selectedView = "home";
+  if (action === "prev-account-month") accountDetail.month = previousMonth(accountDetail.month);
+  if (action === "next-account-month") accountDetail.month = nextMonth(accountDetail.month);
+  if (action === "open-account-transaction") openTransaction(accountDetail.accountId);
+  if (action === "open-account-report") {
+    state.reportMonth = accountDetail.month;
+    state.reportFilter = accountDetail.filter;
+    state.selectedView = "report";
+  }
   if (action === "open-transaction") openTransaction(button.dataset.accountId);
   if (action === "close-transaction") closeTransaction();
   if (action === "close-balance") closeBalanceAdjustment();
@@ -1165,6 +1257,13 @@ document.addEventListener("click", (event) => {
 document.querySelectorAll(".report-tabs button").forEach((button) => {
   button.addEventListener("click", () => {
     state.reportFilter = button.dataset.filter;
+    render();
+  });
+});
+
+document.querySelectorAll("[data-account-filter]").forEach((button) => {
+  button.addEventListener("click", () => {
+    accountDetail.filter = button.dataset.accountFilter;
     render();
   });
 });

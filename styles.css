@@ -216,6 +216,28 @@ svg {
   box-shadow: var(--shadow);
 }
 
+.account-summary-button {
+  display: grid;
+  width: 100%;
+  padding: 0;
+  color: inherit;
+  background: transparent;
+  text-align: left;
+}
+
+.account-card-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.account-card-heading svg {
+  width: 22px;
+  height: 22px;
+  color: var(--muted);
+}
+
 .account-card.is-hidden-balance .account-balance {
   color: #c7cbd0;
   font-size: 1.65rem;
@@ -288,6 +310,206 @@ svg {
   border: 1px solid white;
   font-size: 1.05rem;
   font-weight: 550;
+}
+
+.view-account-detail {
+  padding-top: max(22px, env(safe-area-inset-top));
+}
+
+.account-detail-topbar {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) 52px;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.account-month-pill {
+  justify-self: center;
+}
+
+.account-add-button {
+  color: var(--blue);
+}
+
+.account-detail-hero {
+  display: grid;
+  gap: 12px;
+  margin: 0 -18px;
+  padding: 30px 24px 26px;
+  background: #d4f4fb;
+}
+
+.account-detail-hero > span {
+  font-size: 1.05rem;
+  font-weight: 500;
+}
+
+.account-detail-hero > strong {
+  font-size: clamp(2rem, 7vw, 2.65rem);
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.account-month-flow {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.account-month-flow > div {
+  display: grid;
+  gap: 3px;
+  padding: 13px 14px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.64);
+}
+
+.account-month-flow span {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.account-month-flow strong {
+  overflow: hidden;
+  font-size: 0.95rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-detail-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  margin: 18px 0;
+}
+
+.account-filter-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  padding: 4px;
+  border-radius: 16px;
+  background: #e9ebef;
+}
+
+.account-filter-tabs button {
+  min-height: 40px;
+  border-radius: 12px;
+  color: #747c87;
+  background: transparent;
+  font-size: 0.88rem;
+  font-weight: 550;
+}
+
+.account-filter-tabs button.is-active {
+  color: var(--text);
+  background: white;
+  box-shadow: 0 5px 16px rgba(27, 39, 54, 0.08);
+}
+
+.account-history-panel {
+  min-height: 230px;
+  padding: 20px;
+  border-radius: 22px;
+  background: white;
+  box-shadow: var(--shadow);
+}
+
+.account-history-panel > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 10px;
+}
+
+.account-history-panel h2 {
+  margin: 0;
+  font-size: 1.08rem;
+}
+
+.account-history-panel > header span {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.account-history-list {
+  display: grid;
+}
+
+.account-transaction-row {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto 18px;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  min-height: 72px;
+  padding: 10px 0;
+  color: inherit;
+  background: transparent;
+  text-align: left;
+  border-top: 1px solid var(--line);
+}
+
+.account-transaction-row > svg {
+  width: 18px;
+  height: 18px;
+  color: #b5bac2;
+}
+
+.category-mark {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+}
+
+.account-transaction-copy {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.account-transaction-copy strong,
+.account-transaction-copy span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-transaction-copy strong {
+  font-size: 0.94rem;
+}
+
+.account-transaction-copy span {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.account-transaction-amount {
+  font-size: 0.94rem;
+  white-space: nowrap;
+}
+
+@media (max-width: 430px) {
+  .account-detail-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .account-detail-toolbar .inline-link {
+    justify-self: end;
+  }
+
+  .account-history-panel {
+    padding: 18px 16px;
+  }
+
+  .account-transaction-row {
+    grid-template-columns: 30px minmax(0, 1fr) auto 16px;
+    gap: 9px;
+  }
 }
 
 .bottom-nav {
