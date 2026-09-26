@@ -1,4 +1,4 @@
-const STORAGE_KEY = "yeeun-budget-book-state-v1";
+const STORAGE_KEY = "yeeun-budget-book-state-v2";
 const todayISO = "2026-09-26";
 
 const colorPalette = ["#3a91ff", "#ff8b18", "#12bd82", "#d8dde3", "#8e7dff", "#ff6776", "#2bb6c4"];
@@ -83,6 +83,14 @@ let entry = {
   categoryId: state.categories.expense[0]?.id ?? "",
   memo: ""
 };
+
+let balanceAdjustment = {
+  accountId: "",
+  amount: "",
+  date: todayISO
+};
+
+const hiddenBalanceMessages = ["잔고 비밀 유지 중", "내 잔고는 비밀", "통장 지키는 중"];
 
 function loadState() {
   const saved = localStorage.getItem(STORAGE_KEY);
@@ -192,6 +200,7 @@ function render() {
   renderReport();
   renderSettings();
   renderEntrySheet();
+  renderBalanceSheet();
   saveState();
 }
 
@@ -206,17 +215,18 @@ function renderNavigation() {
 
 function renderHome() {
   const total = state.accounts.reduce((sum, account) => sum + account.balance, 0);
-  byId("total-balance").textContent = state.hideBalance ? "••••••원" : money(total);
+  byId("total-balance").textContent = state.hideBalance ? "억만장자 준비 중" : money(total);
   byId("hide-balance-toggle").checked = state.hideBalance;
+  document.querySelector(".balance-card").classList.toggle("is-hidden-balance", state.hideBalance);
 
   byId("account-list").innerHTML = state.accounts
-    .map((account) => `
-      <article class="account-card">
+    .map((account, index) => `
+      <article class="account-card${state.hideBalance ? " is-hidden-balance" : ""}">
         <header>
           <h2>${escapeHTML(account.name)}</h2>
           <span class="menu-dot">•••</span>
         </header>
-        <strong class="account-balance">${state.hideBalance ? "••••••원" : money(account.balance, account.balance < 0)}</strong>
+        <strong class="account-balance">${state.hideBalance ? hiddenBalanceMessages[index % hiddenBalanceMessages.length] : money(account.balance, account.balance < 0)}</strong>
         <div class="divider"></div>
         <div class="account-actions">
           <button class="pill-button secondary" type="button" data-action="adjust-account" data-account-id="${account.id}">잔액 맞추기</button>
@@ -423,6 +433,25 @@ function renderEntrySheet() {
   byId("save-transaction").classList.toggle("is-ready", amountNumber > 0);
 }
 
+function renderBalanceSheet() {
+  const account = getAccount(balanceAdjustment.accountId);
+  if (!account) return;
+  const hasAmount = balanceAdjustment.amount !== "";
+  const currentBalance = Number(balanceAdjustment.amount || 0);
+  const difference = currentBalance - account.balance;
+  const differenceRow = document.querySelector(".balance-difference");
+
+  byId("balance-date").value = balanceAdjustment.date;
+  byId("balance-account-name").textContent = account.name;
+  byId("balance-before").textContent = money(account.balance, true);
+  byId("balance-current").textContent = money(currentBalance, currentBalance < 0);
+  byId("balance-difference-label").textContent = !hasAmount ? "변동" : difference > 0 ? "수입" : difference < 0 ? "지출" : "변동 없음";
+  byId("balance-difference-amount").textContent = !hasAmount ? "- 원" : money(difference, true);
+  differenceRow.classList.toggle("is-income", hasAmount && difference > 0);
+  differenceRow.classList.toggle("is-expense", hasAmount && difference < 0);
+  byId("save-balance").classList.toggle("is-ready", hasAmount);
+}
+
 function openTransaction(accountId) {
   entry = {
     type: "expense",
@@ -574,17 +603,46 @@ function moveCategory(categoryId, direction) {
   render();
 }
 
-function adjustAccount(accountId) {
+function openBalanceAdjustment(accountId) {
   const account = getAccount(accountId);
   if (!account) return;
-  const value = prompt(`${account.name}의 현재 잔액을 입력해 주세요.`, String(account.balance));
-  if (value === null) return;
-  const nextBalance = Number(value.replaceAll(",", ""));
-  if (Number.isNaN(nextBalance)) {
-    toast("숫자로 입력해 주세요.");
+  balanceAdjustment = { accountId, amount: "", date: todayISO };
+  byId("balance-modal").classList.add("is-open");
+  byId("balance-modal").setAttribute("aria-hidden", "false");
+  renderBalanceSheet();
+}
+
+function closeBalanceAdjustment() {
+  byId("balance-modal").classList.remove("is-open");
+  byId("balance-modal").setAttribute("aria-hidden", "true");
+}
+
+function saveBalanceAdjustment() {
+  const account = getAccount(balanceAdjustment.accountId);
+  if (!account || balanceAdjustment.amount === "") {
+    toast("현재 잔액을 입력해 주세요.");
     return;
   }
+  const nextBalance = Number(balanceAdjustment.amount);
+  const difference = nextBalance - account.balance;
+
+  if (difference !== 0) {
+    const type = difference > 0 ? "income" : "expense";
+    const fallbackCategory = state.categories[type].find((category) => category.name === "기타") ?? state.categories[type][0];
+    state.transactions.push({
+      id: `balance-${Date.now()}`,
+      type,
+      date: balanceAdjustment.date,
+      accountId: account.id,
+      categoryId: fallbackCategory.id,
+      amount: Math.abs(difference),
+      memo: "잔액 맞추기"
+    });
+  }
+
   account.balance = nextBalance;
+  state.reportMonth = monthOf(balanceAdjustment.date);
+  closeBalanceAdjustment();
   toast("잔액을 맞췄어요.");
   render();
 }
@@ -612,6 +670,7 @@ document.addEventListener("click", (event) => {
 
   if (action === "open-transaction") openTransaction(button.dataset.accountId);
   if (action === "close-transaction") closeTransaction();
+  if (action === "close-balance") closeBalanceAdjustment();
   if (action === "prev-month") state.reportMonth = previousMonth(state.reportMonth);
   if (action === "next-month") state.reportMonth = nextMonth(state.reportMonth);
   if (action === "show-analysis") byId("analysis-panel").scrollIntoView({ behavior: "smooth", block: "start" });
@@ -631,7 +690,7 @@ document.addEventListener("click", (event) => {
   if (action === "delete-account") deleteAccount(button.dataset.accountId);
   if (action === "delete-category") deleteCategory(button.dataset.categoryId);
   if (action === "move-category") moveCategory(button.dataset.categoryId, button.dataset.direction);
-  if (action === "adjust-account") adjustAccount(button.dataset.accountId);
+  if (action === "adjust-account") openBalanceAdjustment(button.dataset.accountId);
   if (action === "select-entry-category") entry.categoryId = button.dataset.categoryId;
   if (action === "reset-demo") {
     state = structuredClone(seedState);
@@ -679,6 +738,10 @@ byId("entry-memo").addEventListener("input", (event) => {
   entry.memo = event.target.value;
 });
 
+byId("balance-date").addEventListener("change", (event) => {
+  balanceAdjustment.date = event.target.value;
+});
+
 byId("keypad").addEventListener("click", (event) => {
   const button = event.target.closest("button");
   if (!button) return;
@@ -688,7 +751,19 @@ byId("keypad").addEventListener("click", (event) => {
   renderEntrySheet();
 });
 
+byId("balance-keypad").addEventListener("click", (event) => {
+  const button = event.target.closest("button");
+  if (!button) return;
+  const key = button.dataset.balanceKey;
+  if (key === "back") balanceAdjustment.amount = balanceAdjustment.amount.slice(0, -1);
+  if (/^\d+$/.test(key)) {
+    balanceAdjustment.amount = `${balanceAdjustment.amount}${key}`.replace(/^0+(?=\d)/, "").slice(0, 10);
+  }
+  renderBalanceSheet();
+});
+
 byId("save-transaction").addEventListener("click", saveTransaction);
+byId("save-balance").addEventListener("click", saveBalanceAdjustment);
 byId("account-form").addEventListener("submit", addAccount);
 byId("category-form").addEventListener("submit", addCategory);
 
@@ -698,6 +773,10 @@ byId("transaction-modal").addEventListener("click", (event) => {
 
 byId("day-modal").addEventListener("click", (event) => {
   if (event.target.id === "day-modal") closeDay();
+});
+
+byId("balance-modal").addEventListener("click", (event) => {
+  if (event.target.id === "balance-modal") closeBalanceAdjustment();
 });
 
 render();

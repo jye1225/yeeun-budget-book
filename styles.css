@@ -12,7 +12,7 @@
   --orange: #ff8b18;
   --yellow: #edc649;
   --shadow: 0 20px 60px rgba(34, 48, 68, 0.12);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
 }
 
 * {
@@ -23,6 +23,14 @@ body {
   margin: 0;
   color: var(--text);
   background: var(--bg);
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+h1,
+h2,
+strong {
+  font-weight: 650;
 }
 
 button,
@@ -71,34 +79,23 @@ svg {
 .home-hero {
   position: relative;
   margin: -28px -18px 28px;
-  padding: 72px 18px 26px;
+  padding: 42px 18px 26px;
   background: linear-gradient(180deg, #d4f4fb 0%, #f7fbfc 78%, rgba(247, 251, 252, 0) 100%);
 }
 
-.brand-mark {
-  display: grid;
-  grid-template-columns: repeat(3, 32px);
-  gap: 8px;
-  width: max-content;
-}
-
-.brand-mark span {
-  display: block;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #9ceaff, #35b7f4);
+.home-controls {
+  display: flex;
+  justify-content: flex-end;
+  min-height: 34px;
+  margin-bottom: 18px;
 }
 
 .balance-toggle {
-  position: absolute;
-  top: 88px;
-  right: 18px;
   display: flex;
   align-items: center;
   gap: 8px;
   color: var(--muted);
-  font-weight: 700;
+  font-weight: 500;
 }
 
 .balance-toggle input {
@@ -132,29 +129,6 @@ svg {
   transform: translateX(22px);
 }
 
-.record-chip {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: max-content;
-  margin: 52px auto 28px;
-  padding: 12px 24px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.72);
-  border: 1px solid rgba(255, 255, 255, 0.9);
-  box-shadow: 0 10px 30px rgba(55, 88, 106, 0.1);
-}
-
-.record-chip span {
-  display: grid;
-  width: 24px;
-  height: 24px;
-  place-items: center;
-  border-radius: 50%;
-  color: white;
-  background: #58bf63;
-}
-
 .balance-card {
   display: grid;
   gap: 24px;
@@ -167,7 +141,7 @@ svg {
 }
 
 .balance-card span {
-  font-weight: 800;
+  font-weight: 600;
   font-size: 1.25rem;
 }
 
@@ -176,6 +150,13 @@ svg {
   justify-self: end;
   font-size: clamp(2rem, 9vw, 3.2rem);
   letter-spacing: 0;
+}
+
+.balance-card.is-hidden-balance strong {
+  max-width: 100%;
+  font-size: clamp(1.8rem, 8vw, 2.75rem);
+  text-align: right;
+  white-space: normal;
 }
 
 .section-header {
@@ -197,7 +178,7 @@ svg {
 .inline-link {
   color: #2d85c5;
   background: transparent;
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .account-list {
@@ -211,6 +192,12 @@ svg {
   background: rgba(255, 255, 255, 0.86);
   border: 1px solid rgba(255, 255, 255, 0.9);
   box-shadow: var(--shadow);
+}
+
+.account-card.is-hidden-balance .account-balance {
+  color: #c7cbd0;
+  font-size: clamp(1.65rem, 8vw, 2.55rem);
+  white-space: normal;
 }
 
 .account-card header,
@@ -239,7 +226,7 @@ svg {
   display: block;
   margin: 22px 0 26px;
   font-size: clamp(2rem, 10vw, 3.2rem);
-  font-weight: 900;
+  font-weight: 650;
   letter-spacing: 0;
   white-space: nowrap;
 }
@@ -260,7 +247,7 @@ svg {
   border-radius: 999px;
   background: #7db8cb;
   color: white;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .pill-button.secondary {
@@ -278,7 +265,7 @@ svg {
   background: rgba(255, 255, 255, 0.74);
   border: 1px solid white;
   font-size: 1.3rem;
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .bottom-nav {
@@ -402,7 +389,7 @@ svg {
   border-radius: 15px;
   color: #717780;
   background: transparent;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .report-tabs button.is-active,
@@ -438,7 +425,7 @@ svg {
 .report-summary span,
 .eyebrow {
   color: var(--muted);
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .report-summary strong {
@@ -460,7 +447,7 @@ svg {
 .compare-panel p {
   margin: 0 0 10px;
   font-size: 1.25rem;
-  font-weight: 900;
+  font-weight: 650;
   line-height: 1.35;
 }
 
@@ -488,7 +475,7 @@ svg {
 
 .weekday-row {
   color: #b6bbc2;
-  font-weight: 800;
+  font-weight: 500;
   margin-bottom: 8px;
 }
 
@@ -595,7 +582,7 @@ svg {
 
 .breakdown-row small {
   color: var(--muted);
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .settings-header {
@@ -613,7 +600,7 @@ svg {
   background: white;
   text-align: left;
   font-size: 1.28rem;
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .settings-row svg {
@@ -651,7 +638,7 @@ svg {
   border-radius: 12px;
   color: #626972;
   background: #f1f3f6;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .small-button.danger {
@@ -690,7 +677,7 @@ svg {
   border-radius: 16px;
   background: var(--blue);
   color: white;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 #category-form button {
@@ -712,6 +699,7 @@ svg {
 }
 
 .entry-sheet,
+.balance-sheet,
 .day-sheet {
   position: relative;
   width: min(100%, 720px);
@@ -724,6 +712,7 @@ svg {
 }
 
 .entry-sheet h2,
+.balance-sheet h2,
 .day-sheet h2 {
   position: absolute;
   top: 36px;
@@ -753,7 +742,7 @@ svg {
   display: grid;
   place-items: center;
   font-size: clamp(2.4rem, 13vw, 4.2rem);
-  font-weight: 950;
+  font-weight: 700;
   letter-spacing: 0;
 }
 
@@ -774,7 +763,7 @@ svg {
   color: var(--muted);
   text-align: center;
   font-size: 1.08rem;
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .category-chips {
@@ -792,7 +781,7 @@ svg {
   border-radius: 999px;
   color: white;
   background: var(--blue);
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .category-chip.is-active {
@@ -830,7 +819,7 @@ svg {
   background: #9bc9fa;
   color: white;
   font-size: 1.25rem;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .primary-action.is-ready {
@@ -839,6 +828,76 @@ svg {
 
 .day-sheet {
   min-height: 48vh;
+}
+
+.balance-sheet {
+  min-height: min(94vh, 880px);
+}
+
+.balance-date {
+  display: block;
+  width: max-content;
+  margin: 24px auto 12px;
+  padding: 10px 18px;
+  border: 0;
+  border-radius: 999px;
+  color: var(--text);
+  background: #f0f1f3;
+  font-size: 1rem;
+  text-align: center;
+}
+
+.balance-account-name {
+  margin: 0 0 34px;
+  color: var(--muted);
+  font-size: 1.25rem;
+  text-align: center;
+}
+
+.balance-summary {
+  display: grid;
+  gap: 22px;
+  padding: 0 10px;
+}
+
+.balance-summary-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  font-size: 1.25rem;
+}
+
+.balance-summary-row.is-muted {
+  color: #a9aeb5;
+}
+
+.balance-summary-row strong {
+  font-size: clamp(1.45rem, 7vw, 2rem);
+  text-align: right;
+}
+
+.balance-difference {
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+
+.balance-difference.is-income {
+  color: var(--blue);
+}
+
+.balance-difference.is-expense {
+  color: var(--red);
+}
+
+.balance-help {
+  margin: 48px 0 18px;
+  color: #b3b7bd;
+  text-align: center;
+}
+
+.balance-keypad button {
+  min-height: 58px;
 }
 
 #day-transactions {
@@ -856,7 +915,7 @@ svg {
 .day-transaction span {
   color: var(--muted);
   font-size: 0.9rem;
-  font-weight: 700;
+  font-weight: 500;
 }
 
 .day-transaction strong {
@@ -875,7 +934,7 @@ svg {
   border-radius: 999px;
   color: white;
   background: rgba(28, 34, 42, 0.78);
-  font-weight: 900;
+  font-weight: 600;
   text-align: center;
 }
 
@@ -884,16 +943,6 @@ svg {
 }
 
 @media (max-width: 390px) {
-  .balance-toggle {
-    position: static;
-    justify-content: flex-end;
-    margin-top: 18px;
-  }
-
-  .record-chip {
-    margin-top: 34px;
-  }
-
   .entry-controls {
     grid-template-columns: 1fr;
   }
@@ -914,7 +963,7 @@ svg {
 
   .home-hero {
     margin: 0 0 28px;
-    padding: 52px 30px 32px;
+    padding: 30px 30px 32px;
     border-radius: 40px;
   }
 

@@ -5,24 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#f4f6fa" />
     <title>예은 가계부</title>
-    <link rel="stylesheet" href="./styles.css?v=3" />
+    <link
+      rel="stylesheet"
+      as="style"
+      crossorigin
+      href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
+    />
+    <link rel="stylesheet" href="./styles.css?v=4" />
   </head>
   <body>
     <div class="app-shell">
       <main class="app-main">
         <section class="view view-home is-active" id="home-view" aria-labelledby="home-title">
           <header class="home-hero">
-            <div class="brand-mark" aria-hidden="true">
-              <span></span><span></span><span></span><span></span><span></span><span></span>
-            </div>
-            <label class="balance-toggle">
-              <span>잔액 가리기</span>
-              <input type="checkbox" id="hide-balance-toggle" />
-              <i aria-hidden="true"></i>
-            </label>
-            <div class="record-chip">
-              <span aria-hidden="true">✓</span>
-              <strong>오늘도 기록 완료!</strong>
+            <div class="home-controls">
+              <label class="balance-toggle">
+                <span>잔액 가리기</span>
+                <input type="checkbox" id="hide-balance-toggle" />
+                <i aria-hidden="true"></i>
+              </label>
             </div>
             <div class="balance-card">
               <span>총 잔액</span>
@@ -216,7 +217,52 @@
       </section>
     </div>
 
+    <div class="modal-backdrop" id="balance-modal" aria-hidden="true">
+      <section class="balance-sheet" role="dialog" aria-modal="true" aria-labelledby="balance-sheet-title">
+        <button class="close-button" type="button" data-action="close-balance" aria-label="닫기">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
+        </button>
+        <h2 id="balance-sheet-title">잔액 맞추기</h2>
+        <input class="balance-date" type="date" id="balance-date" />
+        <p class="balance-account-name" id="balance-account-name">계좌</p>
+
+        <div class="balance-summary">
+          <div class="balance-summary-row is-muted">
+            <span>기존</span>
+            <strong id="balance-before">0원</strong>
+          </div>
+          <div class="balance-summary-row">
+            <span>현재 잔액</span>
+            <strong id="balance-current">0원</strong>
+          </div>
+          <div class="balance-summary-row balance-difference">
+            <span id="balance-difference-label">변동</span>
+            <strong id="balance-difference-amount">- 원</strong>
+          </div>
+        </div>
+
+        <p class="balance-help">그동안의 거래 금액을 묶어서 기록해요</p>
+        <div class="keypad balance-keypad" id="balance-keypad">
+          <button type="button" data-balance-key="1">1</button>
+          <button type="button" data-balance-key="2">2</button>
+          <button type="button" data-balance-key="3">3</button>
+          <button type="button" data-balance-key="4">4</button>
+          <button type="button" data-balance-key="5">5</button>
+          <button type="button" data-balance-key="6">6</button>
+          <button type="button" data-balance-key="7">7</button>
+          <button type="button" data-balance-key="8">8</button>
+          <button type="button" data-balance-key="9">9</button>
+          <button type="button" data-balance-key="00">00</button>
+          <button type="button" data-balance-key="0">0</button>
+          <button type="button" data-balance-key="back" aria-label="지우기">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 4H8l-6 8 6 8h13z" /><path d="m18 9-6 6M12 9l6 6" /></svg>
+          </button>
+        </div>
+        <button class="primary-action" id="save-balance" type="button">완료</button>
+      </section>
+    </div>
+
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="./app.js?v=4"></script>
+    <script src="./app.js?v=5"></script>
   </body>
 </html>
