@@ -11,7 +11,7 @@
       crossorigin
       href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
     />
-    <link rel="stylesheet" href="./styles.css?v=4" />
+    <link rel="stylesheet" href="./styles.css?v=5" />
   </head>
   <body>
     <div class="app-shell">
@@ -63,23 +63,20 @@
             <button type="button" data-filter="income">수입</button>
           </div>
 
-          <section class="report-summary">
-            <div>
-              <span>지출</span>
-              <strong id="month-expense">0원</strong>
+          <section class="report-overview">
+            <div class="report-summary">
+              <div>
+                <span>지출</span>
+                <strong id="month-expense">0원</strong>
+              </div>
+              <div>
+                <span>수입</span>
+                <strong id="month-income">0원</strong>
+              </div>
             </div>
-            <div>
-              <span>수입</span>
-              <strong id="month-income">0원</strong>
-            </div>
-          </section>
-
-          <section class="compare-panel">
-            <div>
+            <div class="compare-panel">
               <p id="month-compare-copy">지난달과 비교할 기록이 필요해요</p>
-              <button class="inline-link" type="button" data-action="show-analysis">분석 보기</button>
             </div>
-            <div class="sparkline" id="spend-sparkline" aria-hidden="true"></div>
           </section>
 
           <section class="calendar-panel">
@@ -263,6 +260,6 @@
     </div>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="./app.js?v=5"></script>
+    <script src="./app.js?v=6"></script>
   </body>
 </html>

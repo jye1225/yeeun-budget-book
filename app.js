@@ -1,4 +1,4 @@
-const STORAGE_KEY = "yeeun-budget-book-state-v2";
+const STORAGE_KEY = "yeeun-budget-book-state-v3";
 const todayISO = "2026-09-26";
 
 const colorPalette = ["#3a91ff", "#ff8b18", "#12bd82", "#d8dde3", "#8e7dff", "#ff6776", "#2bb6c4"];
@@ -76,6 +76,7 @@ const seedState = {
 
 let state = loadState();
 let entry = {
+  id: null,
   type: "expense",
   amount: "",
   date: todayISO,
@@ -251,7 +252,6 @@ function renderReport() {
   byId("month-income").textContent = money(income, true);
   byId("month-expense").textContent = money(-expense, true);
   byId("month-compare-copy").innerHTML = compareCopy(diff, lastExpense);
-  renderSparkline(month, lastMonth);
   renderCalendar(month, transactions);
   renderCategoryAnalysis(month, "expense");
   renderCategoryAnalysis(month, "income");
@@ -266,42 +266,6 @@ function compareCopy(diff, lastExpense) {
   if (diff === 0) return "지난달과 <em>비슷하게</em> 쓰는 중";
   if (diff < 0) return `지난달보다 <em>${plainCompactMoney(diff)}</em> 덜 쓰는 중`;
   return `지난달보다 <em>${plainCompactMoney(diff)}</em> 더 쓰는 중`;
-}
-
-function renderSparkline(month, lastMonth) {
-  const current = cumulativeExpenses(month);
-  const previous = cumulativeExpenses(lastMonth);
-  const maxValue = Math.max(...current, ...previous, 1);
-  const width = 180;
-  const height = 92;
-  const toPoints = (values) =>
-    values.map((value, index) => {
-      const x = (index / (values.length - 1 || 1)) * width;
-      const y = height - (value / maxValue) * (height - 14) - 7;
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
-    }).join(" ");
-  byId("spend-sparkline").innerHTML = `
-    <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">
-      <polyline points="${toPoints(previous)}" stroke="#d9dde2" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round" />
-      <polyline points="${toPoints(current)}" stroke="#3a91ff" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round" />
-      <circle cx="${width - 2}" cy="${height - (current.at(-1) / maxValue) * (height - 14) - 7}" r="7" fill="#3a91ff" />
-    </svg>
-  `;
-}
-
-function cumulativeExpenses(month) {
-  const [year, monthIndex] = month.split("-").map(Number);
-  const days = new Date(year, monthIndex, 0).getDate();
-  const values = Array.from({ length: days }, () => 0);
-  transactionsForMonth(month, "expense").forEach((transaction) => {
-    const day = Number(transaction.date.slice(8, 10));
-    values[day - 1] += transaction.amount;
-  });
-  let total = 0;
-  return values.map((value) => {
-    total += value;
-    return total;
-  });
 }
 
 function renderCalendar(month, transactions) {
@@ -411,6 +375,9 @@ function renderSettings() {
 }
 
 function renderEntrySheet() {
+  const isEditing = Boolean(entry.id);
+  byId("entry-title").textContent = isEditing ? "내역 수정" : "추가";
+  byId("save-transaction").textContent = isEditing ? "수정 완료" : "완료";
   byId("entry-date").value = entry.date;
   byId("entry-account").innerHTML = state.accounts
     .map((account) => `<option value="${account.id}" ${account.id === entry.accountId ? "selected" : ""}>${escapeHTML(account.name)}</option>`)
@@ -454,6 +421,7 @@ function renderBalanceSheet() {
 
 function openTransaction(accountId) {
   entry = {
+    id: null,
     type: "expense",
     amount: "",
     date: todayISO,
@@ -461,6 +429,24 @@ function openTransaction(accountId) {
     categoryId: state.categories.expense[0]?.id ?? "",
     memo: ""
   };
+  byId("transaction-modal").classList.add("is-open");
+  byId("transaction-modal").setAttribute("aria-hidden", "false");
+  renderEntrySheet();
+}
+
+function openEditTransaction(transactionId) {
+  const transaction = state.transactions.find((item) => item.id === transactionId);
+  if (!transaction) return;
+  entry = {
+    id: transaction.id,
+    type: transaction.type,
+    amount: String(transaction.amount),
+    date: transaction.date,
+    accountId: transaction.accountId,
+    categoryId: transaction.categoryId,
+    memo: transaction.memo ?? ""
+  };
+  closeDay();
   byId("transaction-modal").classList.add("is-open");
   byId("transaction-modal").setAttribute("aria-hidden", "false");
   renderEntrySheet();
@@ -482,7 +468,7 @@ function saveTransaction() {
     return;
   }
   const transaction = {
-    id: `t-${Date.now()}`,
+    id: entry.id ?? `t-${Date.now()}`,
     type: entry.type,
     date: entry.date,
     accountId: entry.accountId,
@@ -490,13 +476,27 @@ function saveTransaction() {
     amount,
     memo: byId("entry-memo").value.trim()
   };
-  state.transactions.push(transaction);
-  const account = getAccount(entry.accountId);
-  if (account) account.balance += entry.type === "income" ? amount : -amount;
+  const existingIndex = entry.id ? state.transactions.findIndex((item) => item.id === entry.id) : -1;
+  const existingTransaction = existingIndex >= 0 ? state.transactions[existingIndex] : null;
+
+  if (existingTransaction) {
+    applyTransactionToAccount(existingTransaction, -1);
+    state.transactions[existingIndex] = transaction;
+  } else {
+    state.transactions.push(transaction);
+  }
+  applyTransactionToAccount(transaction, 1);
   state.reportMonth = monthOf(entry.date);
   closeTransaction();
-  toast("기록을 추가했어요.");
+  toast(existingTransaction ? "내역을 수정했어요." : "기록을 추가했어요.");
   render();
+}
+
+function applyTransactionToAccount(transaction, direction) {
+  const account = getAccount(transaction.accountId);
+  if (!account) return;
+  const signedAmount = transaction.type === "income" ? transaction.amount : -transaction.amount;
+  account.balance += signedAmount * direction;
 }
 
 function openDay(date) {
@@ -511,11 +511,16 @@ function openDay(date) {
       const signedAmount = transaction.type === "income" ? transaction.amount : -transaction.amount;
       return `
         <div class="day-transaction">
-          <div>
+          <div class="day-transaction-main">
             <strong>${escapeHTML(category.name)}</strong>
             <span>${escapeHTML(account?.name ?? "계좌")} · ${escapeHTML(transaction.memo || "메모 없음")}</span>
           </div>
-          <strong class="${transaction.type}">${money(signedAmount, true)}</strong>
+          <div class="day-transaction-actions">
+            <strong class="${transaction.type}">${money(signedAmount, true)}</strong>
+            <button class="edit-transaction-button" type="button" data-action="edit-transaction" data-transaction-id="${escapeHTML(transaction.id)}" aria-label="${escapeHTML(category.name)} 내역 수정" title="내역 수정">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
+            </button>
+          </div>
         </div>
       `;
     }).join("")
@@ -673,8 +678,8 @@ document.addEventListener("click", (event) => {
   if (action === "close-balance") closeBalanceAdjustment();
   if (action === "prev-month") state.reportMonth = previousMonth(state.reportMonth);
   if (action === "next-month") state.reportMonth = nextMonth(state.reportMonth);
-  if (action === "show-analysis") byId("analysis-panel").scrollIntoView({ behavior: "smooth", block: "start" });
   if (action === "open-day") openDay(button.dataset.date);
+  if (action === "edit-transaction") openEditTransaction(button.dataset.transactionId);
   if (action === "close-day") closeDay();
   if (action === "open-account-manager") {
     state.selectedView = "settings";
