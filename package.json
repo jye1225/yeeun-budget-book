@@ -5,6 +5,6 @@
   "description": "Mobile-first personal budget book web app",
   "scripts": {
     "start": "node server.mjs",
-    "check": "node --check app.js && node --check sw.js && node --check server.mjs"
+    "check": "node --check app.js && node --check supabase-config.js && node --check sw.js && node --check server.mjs"
   }
 }

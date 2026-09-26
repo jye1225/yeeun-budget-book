@@ -1,6 +1,6 @@
 # 예은 가계부
 
-모바일에서 주로 쓰고 PC에서도 볼 수 있는 정적 웹 가계부입니다. 별도 서버 없이 브라우저 `localStorage`에 데이터가 저장됩니다.
+모바일에서 주로 쓰고 PC에서도 볼 수 있는 정적 웹 가계부입니다. 로그인하지 않아도 브라우저에 저장되며, 이메일로 로그인하면 Supabase를 통해 여러 기기에서 자동 동기화됩니다.
 
 ## 주요 기능
 
@@ -12,6 +12,8 @@
 - 카테고리별 지출/수입 금액과 비율 분석
 - 모바일 우선 반응형 UI
 - iPhone 홈 화면 설치와 오프라인 앱 셸 지원
+- 이메일 매직링크 로그인과 기기 간 자동 동기화
+- 일별 클라우드 스냅샷과 JSON 백업/복원
 
 ## 실행
 
@@ -33,4 +35,12 @@ PWA 아이콘과 설치 정보, 오프라인 앱 셸이 포함되어 있습니�
 
 ## 데이터 저장
 
-데이터는 접속한 브라우저의 `localStorage`에 저장됩니다. 다른 기기와 자동 동기화되지는 않습니다.
+로그인 전에는 접속한 브라우저의 `localStorage`에 저장됩니다. 이메일 로그인 후에는 사용자별 가계부가 Supabase에 동기화되고, 변경할 때마다 그날의 최신 상태가 백업 테이블에 보관됩니다.
+
+브라우저에서 사용하는 Supabase 키는 공개 가능한 publishable key입니다. 사용자 데이터는 `supabase/schema.sql`의 Row Level Security 정책으로 분리되며, service role 키는 프런트엔드에서 사용하지 않습니다.
+
+## Supabase 설정
+
+1. Supabase SQL Editor에서 `supabase/schema.sql`을 실행합니다.
+2. Authentication URL Configuration의 Site URL을 배포 주소로 설정합니다.
+3. Redirect URLs에 배포 주소와 로컬 개발 주소를 추가합니다.

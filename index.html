@@ -18,7 +18,7 @@
       crossorigin
       href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
     />
-    <link rel="stylesheet" href="./styles.css?v=15" />
+    <link rel="stylesheet" href="./styles.css?v=16" />
   </head>
   <body>
     <div class="app-shell">
@@ -123,6 +123,49 @@
           <header class="settings-header">
             <h1 id="settings-title">설정</h1>
           </header>
+
+          <section class="settings-card">
+            <button class="settings-row" type="button" data-action="toggle-cloud-sync">
+              <span>클라우드 동기화</span>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+            </button>
+            <div class="settings-body is-open" id="cloud-sync-manager">
+              <div class="sync-status-row">
+                <i class="sync-status-dot" id="sync-status-dot" aria-hidden="true"></i>
+                <div>
+                  <strong id="sync-status-title">연결 확인 중</strong>
+                  <span id="sync-status-copy">클라우드 상태를 확인하고 있어요.</span>
+                </div>
+              </div>
+
+              <form class="cloud-login-form" id="cloud-login-form">
+                <label for="cloud-email-input">이메일</label>
+                <div>
+                  <input type="email" id="cloud-email-input" placeholder="name@example.com" autocomplete="email" required />
+                  <button type="submit">로그인 링크 받기</button>
+                </div>
+                <p>메일로 받은 링크를 열면 이 기기와 자동으로 연결돼요.</p>
+              </form>
+
+              <div class="cloud-account" id="cloud-account" hidden>
+                <div>
+                  <span>연결된 계정</span>
+                  <strong id="cloud-account-email"></strong>
+                </div>
+                <div class="cloud-actions">
+                  <button type="button" data-action="sync-now">지금 동기화</button>
+                  <button class="secondary" type="button" data-action="cloud-sign-out">로그아웃</button>
+                </div>
+                <p id="cloud-backup-copy">변경할 때마다 동기화하고 하루 한 번 자동 백업해요.</p>
+              </div>
+
+              <div class="backup-actions">
+                <button type="button" data-action="export-backup">JSON 백업 내보내기</button>
+                <button class="secondary" type="button" data-action="choose-backup-file">백업 파일 불러오기</button>
+                <input type="file" id="backup-file-input" accept="application/json,.json" hidden />
+              </div>
+            </div>
+          </section>
 
           <section class="settings-card">
             <button class="settings-row" type="button" data-action="toggle-accounts">
@@ -272,6 +315,8 @@
     </div>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="./app.js?v=16"></script>
+    <script src="./supabase-config.js?v=1"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="./app.js?v=17"></script>
   </body>
 </html>

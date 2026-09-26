@@ -1,6 +1,10 @@
 const STORAGE_KEY = "yeeun-budget-book-state-v4";
+const SYNC_META_KEY = "yeeun-budget-book-sync-meta-v1";
+const CLIENT_ID_KEY = "yeeun-budget-book-client-id-v1";
 const todayISO = localDateISO();
 const REPORT_CATEGORY_LIMIT = 10;
+const CLOUD_SAVE_DELAY = 700;
+const cloudConfig = window.YEEUN_SUPABASE_CONFIG;
 
 const colorPalette = ["#3a91ff", "#ff8b18", "#12bd82", "#d8dde3", "#8e7dff", "#ff6776", "#2bb6c4"];
 
@@ -32,7 +36,20 @@ const seedState = {
 };
 
 let state = loadState();
+const clientId = getClientId();
 const expandedReportCategories = new Set();
+let cloudClient = null;
+let authUser = null;
+let realtimeChannel = null;
+let cloudSaveTimer = null;
+let applyingCloudState = false;
+let activeSyncUserId = null;
+let syncStatus = {
+  kind: "checking",
+  title: "연결 확인 중",
+  copy: "클라우드 상태를 확인하고 있어요."
+};
+let lastCloudPayloadJSON = JSON.stringify(buildCloudPayload());
 let entry = {
   id: null,
   type: "expense",
@@ -76,6 +93,15 @@ function mergeState(base, saved) {
 
 function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  const nextCloudPayloadJSON = JSON.stringify(buildCloudPayload());
+  if (!applyingCloudState && nextCloudPayloadJSON !== lastCloudPayloadJSON) {
+    lastCloudPayloadJSON = nextCloudPayloadJSON;
+    writeSyncMeta({
+      pending: true,
+      localUpdatedAt: new Date().toISOString()
+    });
+    scheduleCloudSave();
+  }
 }
 
 function localDateISO(date = new Date()) {
@@ -83,6 +109,51 @@ function localDateISO(date = new Date()) {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+function getClientId() {
+  const saved = localStorage.getItem(CLIENT_ID_KEY);
+  if (saved) return saved;
+  const id = crypto.randomUUID();
+  localStorage.setItem(CLIENT_ID_KEY, id);
+  return id;
+}
+
+function buildCloudPayload() {
+  return {
+    version: 1,
+    hideBalance: state.hideBalance,
+    accounts: state.accounts,
+    categories: state.categories,
+    transactions: state.transactions
+  };
+}
+
+function readSyncMeta() {
+  try {
+    return JSON.parse(localStorage.getItem(SYNC_META_KEY)) ?? {};
+  } catch {
+    return {};
+  }
+}
+
+function writeSyncMeta(patch) {
+  localStorage.setItem(SYNC_META_KEY, JSON.stringify({ ...readSyncMeta(), ...patch }));
+}
+
+function setSyncStatus(kind, title, copy) {
+  syncStatus = { kind, title, copy };
+  renderCloudSettings();
+}
+
+function formatSyncTime(value) {
+  if (!value) return "";
+  return new Intl.DateTimeFormat("ko-KR", {
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(new Date(value));
 }
 
 function money(value, signed = false) {
@@ -472,6 +543,25 @@ function renderSettings() {
       </div>
     `)
     .join("");
+
+  renderCloudSettings();
+}
+
+function renderCloudSettings() {
+  const loginForm = byId("cloud-login-form");
+  if (!loginForm) return;
+  const signedIn = Boolean(authUser);
+  loginForm.hidden = signedIn;
+  byId("cloud-account").hidden = !signedIn;
+  byId("cloud-account-email").textContent = authUser?.email ?? "";
+  byId("sync-status-title").textContent = syncStatus.title;
+  byId("sync-status-copy").textContent = syncStatus.copy;
+  byId("sync-status-dot").className = `sync-status-dot is-${syncStatus.kind}`;
+
+  const lastSyncedAt = readSyncMeta().lastSyncedAt;
+  byId("cloud-backup-copy").textContent = lastSyncedAt
+    ? `${formatSyncTime(lastSyncedAt)} 동기화 · 오늘 자동 백업 완료`
+    : "변경할 때마다 동기화하고 하루 한 번 자동 백업해요.";
 }
 
 function renderEntrySheet() {
@@ -763,6 +853,257 @@ function saveBalanceAdjustment() {
   render();
 }
 
+function applyCloudPayload(payload, updatedAt) {
+  if (!payload || !Array.isArray(payload.accounts) || !Array.isArray(payload.transactions)) return;
+  const localUIState = {
+    selectedView: state.selectedView,
+    reportMonth: state.reportMonth,
+    reportFilter: state.reportFilter,
+    categoryTab: state.categoryTab
+  };
+
+  applyingCloudState = true;
+  try {
+    state = mergeState(structuredClone(seedState), { ...payload, ...localUIState });
+    lastCloudPayloadJSON = JSON.stringify(buildCloudPayload());
+    writeSyncMeta({
+      pending: false,
+      lastSyncedAt: updatedAt ?? new Date().toISOString()
+    });
+    render();
+  } finally {
+    applyingCloudState = false;
+  }
+}
+
+function scheduleCloudSave() {
+  if (!authUser || !cloudClient) return;
+  if (!navigator.onLine) {
+    setSyncStatus("offline", "오프라인 상태", "연결되면 변경사항을 자동으로 올려요.");
+    return;
+  }
+  window.clearTimeout(cloudSaveTimer);
+  cloudSaveTimer = window.setTimeout(() => saveCloudState(), CLOUD_SAVE_DELAY);
+}
+
+async function saveCloudState(force = false) {
+  if (!authUser || !cloudClient) return;
+  if (!navigator.onLine) {
+    setSyncStatus("offline", "오프라인 상태", "연결되면 변경사항을 자동으로 올려요.");
+    return;
+  }
+  if (!force && !readSyncMeta().pending) return;
+
+  setSyncStatus("syncing", "동기화 중", "변경사항을 안전하게 저장하고 있어요.");
+  const payload = buildCloudPayload();
+  const updatedAt = new Date().toISOString();
+  const { error } = await cloudClient.from("budget_books").upsert({
+    user_id: authUser.id,
+    data: payload,
+    updated_at: updatedAt,
+    updated_by: clientId
+  }, { onConflict: "user_id" });
+
+  if (error) {
+    handleCloudError(error);
+    return;
+  }
+
+  const { error: backupError } = await cloudClient.from("budget_book_backups").upsert({
+    user_id: authUser.id,
+    backup_date: localDateISO(),
+    data: payload,
+    updated_at: updatedAt
+  }, { onConflict: "user_id,backup_date" });
+
+  if (backupError) {
+    handleCloudError(backupError);
+    return;
+  }
+
+  lastCloudPayloadJSON = JSON.stringify(payload);
+  writeSyncMeta({ pending: false, lastSyncedAt: updatedAt });
+  setSyncStatus("synced", "동기화 완료", `${formatSyncTime(updatedAt)} · 오늘 자동 백업 완료`);
+}
+
+async function syncFromCloud() {
+  if (!authUser || !cloudClient) return;
+  if (!navigator.onLine) {
+    setSyncStatus("offline", "오프라인 상태", "연결되면 변경사항을 자동으로 올려요.");
+    return;
+  }
+
+  setSyncStatus("syncing", "동기화 중", "클라우드의 최신 기록을 확인하고 있어요.");
+  const { data, error } = await cloudClient
+    .from("budget_books")
+    .select("data, updated_at, updated_by")
+    .eq("user_id", authUser.id)
+    .maybeSingle();
+
+  if (error) {
+    handleCloudError(error);
+    return;
+  }
+
+  if (!data || readSyncMeta().pending) {
+    await saveCloudState(true);
+    return;
+  }
+
+  applyCloudPayload(data.data, data.updated_at);
+  setSyncStatus("synced", "동기화 완료", `${formatSyncTime(data.updated_at)} · 모든 기기가 같은 상태예요.`);
+}
+
+function handleCloudError(error) {
+  const needsSchema = error?.code === "42P01" || String(error?.message).includes("schema cache");
+  setSyncStatus(
+    "error",
+    needsSchema ? "데이터베이스 설정 필요" : "동기화 실패",
+    needsSchema ? "Supabase 테이블을 만든 뒤 다시 시도해 주세요." : "잠시 후 다시 동기화해 주세요."
+  );
+  console.error("Cloud sync error", error);
+}
+
+function subscribeToCloudChanges() {
+  if (!cloudClient || !authUser) return;
+  if (realtimeChannel) cloudClient.removeChannel(realtimeChannel);
+  realtimeChannel = cloudClient
+    .channel(`budget-book-${authUser.id}`)
+    .on("postgres_changes", {
+      event: "*",
+      schema: "public",
+      table: "budget_books",
+      filter: `user_id=eq.${authUser.id}`
+    }, (change) => {
+      if (!change.new?.data || change.new.updated_by === clientId) return;
+      if (readSyncMeta().pending) {
+        scheduleCloudSave();
+        return;
+      }
+      applyCloudPayload(change.new.data, change.new.updated_at);
+      setSyncStatus("synced", "다른 기기와 동기화됨", `${formatSyncTime(change.new.updated_at)} 최신 기록을 받았어요.`);
+    })
+    .subscribe();
+}
+
+async function handleCloudSession(session) {
+  if (!session?.user) {
+    authUser = null;
+    activeSyncUserId = null;
+    if (realtimeChannel && cloudClient) cloudClient.removeChannel(realtimeChannel);
+    realtimeChannel = null;
+    setSyncStatus("idle", "로그인 필요", "로그인하면 여러 기기에서 같은 가계부를 볼 수 있어요.");
+    return;
+  }
+
+  authUser = session.user;
+  renderCloudSettings();
+  if (activeSyncUserId === authUser.id) return;
+  activeSyncUserId = authUser.id;
+  await syncFromCloud();
+  subscribeToCloudChanges();
+}
+
+async function initializeCloudSync() {
+  if (!cloudConfig?.url || !cloudConfig?.publishableKey || !window.supabase?.createClient) {
+    setSyncStatus("error", "클라우드 연결 불가", "인터넷 연결을 확인한 뒤 앱을 다시 열어 주세요.");
+    return;
+  }
+
+  try {
+    cloudClient = window.supabase.createClient(cloudConfig.url, cloudConfig.publishableKey, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true
+      }
+    });
+    const { data, error } = await cloudClient.auth.getSession();
+    if (error) throw error;
+    await handleCloudSession(data.session);
+    cloudClient.auth.onAuthStateChange((_event, session) => {
+      window.setTimeout(() => handleCloudSession(session), 0);
+    });
+  } catch (error) {
+    handleCloudError(error);
+  }
+}
+
+async function requestCloudLogin(event) {
+  event.preventDefault();
+  if (!cloudClient) {
+    toast("클라우드 연결을 확인해 주세요.");
+    return;
+  }
+  const email = byId("cloud-email-input").value.trim();
+  if (!email) return;
+  const button = event.submitter ?? event.currentTarget.querySelector("button[type=submit]");
+  button.disabled = true;
+  setSyncStatus("syncing", "로그인 메일 전송 중", "잠시만 기다려 주세요.");
+  const { error } = await cloudClient.auth.signInWithOtp({
+    email,
+    options: {
+      emailRedirectTo: new URL(".", window.location.href).href,
+      shouldCreateUser: true
+    }
+  });
+  button.disabled = false;
+  if (error) {
+    handleCloudError(error);
+    return;
+  }
+  setSyncStatus("synced", "메일을 확인해 주세요", "받은 로그인 링크를 열면 동기화가 시작돼요.");
+  toast("로그인 링크를 보냈어요.");
+}
+
+async function signOutCloud() {
+  if (!cloudClient) return;
+  await cloudClient.auth.signOut();
+  toast("클라우드에서 로그아웃했어요.");
+}
+
+function exportBackup() {
+  const backup = {
+    app: "yeeun-budget-book",
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    data: buildCloudPayload()
+  };
+  const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `yeeun-budget-${localDateISO()}.json`;
+  link.click();
+  URL.revokeObjectURL(url);
+  toast("백업 파일을 만들었어요.");
+}
+
+async function importBackup(event) {
+  const [file] = event.target.files;
+  event.target.value = "";
+  if (!file) return;
+  try {
+    const parsed = JSON.parse(await file.text());
+    const payload = parsed.data ?? parsed;
+    if (!Array.isArray(payload.accounts) || !Array.isArray(payload.transactions) || !payload.categories) {
+      throw new Error("Invalid backup");
+    }
+    if (!window.confirm("현재 가계부를 백업 파일 내용으로 바꿀까요?")) return;
+    const localUIState = {
+      selectedView: state.selectedView,
+      reportMonth: state.reportMonth,
+      reportFilter: state.reportFilter,
+      categoryTab: state.categoryTab
+    };
+    state = mergeState(structuredClone(seedState), { ...payload, ...localUIState });
+    render();
+    toast("백업을 복원했어요.");
+  } catch {
+    toast("올바른 가계부 백업 파일이 아니에요.");
+  }
+}
+
 function toast(message) {
   const toastElement = byId("toast");
   toastElement.textContent = message;
@@ -808,11 +1149,16 @@ document.addEventListener("click", (event) => {
   }
   if (action === "toggle-accounts") byId("account-manager").classList.toggle("is-open");
   if (action === "toggle-categories") byId("category-manager").classList.toggle("is-open");
+  if (action === "toggle-cloud-sync") byId("cloud-sync-manager").classList.toggle("is-open");
   if (action === "delete-account") deleteAccount(button.dataset.accountId);
   if (action === "delete-category") deleteCategory(button.dataset.categoryId);
   if (action === "move-category") moveCategory(button.dataset.categoryId, button.dataset.direction);
   if (action === "adjust-account") openBalanceAdjustment(button.dataset.accountId);
   if (action === "select-entry-category") entry.categoryId = button.dataset.categoryId;
+  if (action === "sync-now") syncFromCloud();
+  if (action === "cloud-sign-out") signOutCloud();
+  if (action === "export-backup") exportBackup();
+  if (action === "choose-backup-file") byId("backup-file-input").click();
   render();
 });
 
@@ -883,6 +1229,13 @@ byId("save-transaction").addEventListener("click", saveTransaction);
 byId("save-balance").addEventListener("click", saveBalanceAdjustment);
 byId("account-form").addEventListener("submit", addAccount);
 byId("category-form").addEventListener("submit", addCategory);
+byId("cloud-login-form").addEventListener("submit", requestCloudLogin);
+byId("backup-file-input").addEventListener("change", importBackup);
+
+window.addEventListener("online", () => syncFromCloud());
+window.addEventListener("offline", () => {
+  if (authUser) setSyncStatus("offline", "오프라인 상태", "연결되면 변경사항을 자동으로 올려요.");
+});
 
 byId("transaction-modal").addEventListener("click", (event) => {
   if (event.target.id === "transaction-modal") closeTransaction();
@@ -897,6 +1250,7 @@ byId("balance-modal").addEventListener("click", (event) => {
 });
 
 render();
+initializeCloudSync();
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {

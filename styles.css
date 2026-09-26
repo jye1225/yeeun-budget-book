@@ -863,6 +863,124 @@ svg {
   grid-row: auto;
 }
 
+.sync-status-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 16px;
+  background: #f4f7fa;
+}
+
+.sync-status-row div,
+.cloud-account > div:first-child {
+  display: grid;
+  gap: 3px;
+}
+
+.sync-status-row strong,
+.cloud-account strong {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.sync-status-row span,
+.cloud-account span,
+.cloud-account p,
+.cloud-login-form p {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.sync-status-dot {
+  width: 10px;
+  height: 10px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: #b8bdc4;
+}
+
+.sync-status-dot.is-synced {
+  background: #41bf6a;
+}
+
+.sync-status-dot.is-syncing {
+  background: var(--blue);
+}
+
+.sync-status-dot.is-error,
+.sync-status-dot.is-offline {
+  background: #ff8b18;
+}
+
+.cloud-login-form {
+  display: grid;
+  gap: 8px;
+}
+
+.cloud-login-form label {
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.cloud-login-form > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.cloud-login-form input {
+  min-width: 0;
+  height: 46px;
+  padding: 0 13px;
+  border: 0;
+  border-radius: 14px;
+  background: #f1f3f6;
+  outline: none;
+}
+
+.cloud-login-form button,
+.cloud-actions button,
+.backup-actions button {
+  min-height: 42px;
+  padding: 0 14px;
+  border-radius: 14px;
+  color: white;
+  background: var(--blue);
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.cloud-account {
+  display: grid;
+  gap: 14px;
+}
+
+.cloud-account[hidden],
+.cloud-login-form[hidden] {
+  display: none;
+}
+
+.cloud-actions,
+.backup-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.cloud-actions button.secondary,
+.backup-actions button.secondary {
+  color: #4e5968;
+  background: #edf1f5;
+}
+
+@media (max-width: 430px) {
+  .cloud-login-form > div,
+  .backup-actions {
+    grid-template-columns: 1fr;
+  }
+}
+
 .modal-backdrop {
   position: fixed;
   inset: 0;
