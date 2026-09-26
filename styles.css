@@ -185,12 +185,12 @@ svg {
 
 .account-list {
   display: grid;
-  gap: 18px;
+  gap: 14px;
 }
 
 .account-card {
-  padding: 26px;
-  border-radius: 34px;
+  padding: 18px 20px;
+  border-radius: 28px;
   background: rgba(255, 255, 255, 0.86);
   border: 1px solid rgba(255, 255, 255, 0.9);
   box-shadow: var(--shadow);
@@ -226,7 +226,7 @@ svg {
 
 .account-balance {
   display: block;
-  margin: 22px 0 26px;
+  margin: 14px 0 16px;
   font-size: 1.8rem;
   font-weight: 600;
   letter-spacing: 0;
@@ -236,7 +236,7 @@ svg {
 .divider {
   height: 1px;
   background: var(--line);
-  margin-bottom: 18px;
+  margin-bottom: 12px;
 }
 
 .account-actions {
@@ -245,7 +245,7 @@ svg {
 
 .pill-button {
   min-width: 92px;
-  padding: 12px 18px;
+  padding: 10px 16px;
   border-radius: 999px;
   background: #7db8cb;
   color: white;
@@ -1194,7 +1194,7 @@ svg {
   }
 
   .account-card {
-    min-height: 260px;
+    min-height: 210px;
   }
 
   .account-balance {
