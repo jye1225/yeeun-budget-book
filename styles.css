@@ -424,6 +424,18 @@ svg {
   border-bottom: 1px solid var(--line);
 }
 
+.report-summary.is-single {
+  grid-template-columns: 1fr;
+}
+
+.report-summary > div[hidden] {
+  display: none;
+}
+
+.report-summary.is-single div {
+  padding-block: 22px;
+}
+
 .report-summary div {
   padding: 24px 22px;
   background: white;

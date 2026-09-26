@@ -11,7 +11,7 @@
       crossorigin
       href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
     />
-    <link rel="stylesheet" href="./styles.css?v=12" />
+    <link rel="stylesheet" href="./styles.css?v=13" />
   </head>
   <body>
     <div class="app-shell">
@@ -64,13 +64,13 @@
           </div>
 
           <section class="report-overview">
-            <div class="report-summary">
-              <div>
-                <span>지출</span>
+            <div class="report-summary" id="report-summary">
+              <div id="expense-summary">
+                <span id="month-expense-label">지출</span>
                 <strong id="month-expense">0원</strong>
               </div>
-              <div>
-                <span>수입</span>
+              <div id="income-summary">
+                <span id="month-income-label">수입</span>
                 <strong id="month-income">0원</strong>
               </div>
             </div>
@@ -271,6 +271,6 @@
     </div>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="./app.js?v=12"></script>
+    <script src="./app.js?v=13"></script>
   </body>
 </html>

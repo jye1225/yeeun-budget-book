@@ -254,15 +254,29 @@ function renderReport() {
   const income = sumTransactions(allMonthTransactions, "income");
   const expense = sumTransactions(allMonthTransactions, "expense");
   const lastMonth = previousMonth(month);
+  const lastIncome = sumTransactions(transactionsForMonth(lastMonth), "income");
   const lastExpense = sumTransactions(transactionsForMonth(lastMonth), "expense");
-  const diff = expense - lastExpense;
+  const expenseDiff = expense - lastExpense;
+  const incomeDiff = income - lastIncome;
+  const isAllReport = state.reportFilter === "all";
 
   byId("report-month-label").textContent = month;
   byId("month-income").textContent = money(income, true);
   byId("month-expense").textContent = money(-expense, true);
-  byId("month-compare-copy").innerHTML = compareCopy(diff, lastExpense);
+  byId("month-expense-label").textContent = isAllReport ? "지출" : "이번 달 총지출";
+  byId("month-income-label").textContent = isAllReport ? "수입" : "이번 달 총수입";
+  byId("expense-summary").hidden = state.reportFilter === "income";
+  byId("income-summary").hidden = state.reportFilter === "expense";
+  byId("report-summary").classList.toggle("is-single", !isAllReport);
 
-  const isAllReport = state.reportFilter === "all";
+  if (state.reportFilter === "expense") {
+    byId("month-compare-copy").innerHTML = filteredCompareCopy(expenseDiff, lastExpense, "expense");
+  } else if (state.reportFilter === "income") {
+    byId("month-compare-copy").innerHTML = filteredCompareCopy(incomeDiff, lastIncome, "income");
+  } else {
+    byId("month-compare-copy").innerHTML = compareCopy(expenseDiff, lastExpense);
+  }
+
   document.querySelector(".calendar-panel").hidden = !isAllReport;
   byId("analysis-panel").hidden = !isAllReport;
   byId("income-analysis-panel").hidden = !isAllReport;
@@ -288,6 +302,20 @@ function compareCopy(diff, lastExpense) {
   if (diff === 0) return "지난달과 <em>비슷하게</em> 쓰는 중";
   if (diff < 0) return `지난달보다 <em>${plainCompactMoney(diff)}</em> 덜 쓰는 중`;
   return `지난달보다 <em>${plainCompactMoney(diff)}</em> 더 쓰는 중`;
+}
+
+function filteredCompareCopy(diff, previousTotal, type) {
+  const label = type === "expense" ? "지출" : "수입";
+  if (!previousTotal) return `지난달 ${label} 기록이 없어요`;
+  if (diff === 0) return `지난달과 ${label} 금액이 같아요`;
+  if (type === "expense") {
+    return diff < 0
+      ? `지난달보다 <em>${plainCompactMoney(diff)}</em> 덜 썼어요`
+      : `지난달보다 <em>${plainCompactMoney(diff)}</em> 더 썼어요`;
+  }
+  return diff < 0
+    ? `지난달보다 <em>${plainCompactMoney(diff)}</em> 수입이 줄었어요`
+    : `지난달보다 <em>${plainCompactMoney(diff)}</em> 수입이 늘었어요`;
 }
 
 function renderCalendar(month, transactions) {
