@@ -188,6 +188,26 @@ svg {
   gap: 14px;
 }
 
+.account-empty-state {
+  display: grid;
+  min-height: 116px;
+  place-content: center;
+  gap: 6px;
+  padding: 24px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.account-empty-state strong {
+  color: var(--text);
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.account-empty-state span {
+  font-size: 0.88rem;
+}
+
 .account-card {
   padding: 18px 20px;
   border-radius: 28px;

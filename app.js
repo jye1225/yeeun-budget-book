@@ -1,5 +1,5 @@
-const STORAGE_KEY = "yeeun-budget-book-state-v3";
-const todayISO = "2026-09-26";
+const STORAGE_KEY = "yeeun-budget-book-state-v4";
+const todayISO = localDateISO();
 const REPORT_CATEGORY_LIMIT = 10;
 
 const colorPalette = ["#3a91ff", "#ff8b18", "#12bd82", "#d8dde3", "#8e7dff", "#ff6776", "#2bb6c4"];
@@ -7,14 +7,10 @@ const colorPalette = ["#3a91ff", "#ff8b18", "#12bd82", "#d8dde3", "#8e7dff", "#f
 const seedState = {
   hideBalance: false,
   selectedView: "home",
-  reportMonth: "2026-09",
+  reportMonth: todayISO.slice(0, 7),
   reportFilter: "all",
   categoryTab: "expense",
-  accounts: [
-    { id: "woori", name: "우리은행", balance: -169870 },
-    { id: "kakao", name: "카카오뱅크", balance: 93616 },
-    { id: "cash", name: "현금", balance: 304000 }
-  ],
+  accounts: [],
   categories: {
     expense: [
       { id: "food", name: "식비", color: "#3a91ff" },
@@ -32,47 +28,7 @@ const seedState = {
       { id: "etc-income", name: "기타", color: "#d8dde3" }
     ]
   },
-  transactions: [
-    { id: "t-0901-i", type: "income", date: "2026-09-01", accountId: "cash", categoryId: "allowance", amount: 153000, memo: "용돈" },
-    { id: "t-0901-e", type: "expense", date: "2026-09-01", accountId: "cash", categoryId: "snack", amount: 9690, memo: "간식" },
-    { id: "t-0902", type: "expense", date: "2026-09-02", accountId: "woori", categoryId: "food", amount: 38300, memo: "점심" },
-    { id: "t-0903", type: "expense", date: "2026-09-03", accountId: "kakao", categoryId: "shopping", amount: 46500, memo: "쇼핑" },
-    { id: "t-0904", type: "expense", date: "2026-09-04", accountId: "kakao", categoryId: "food", amount: 45200, memo: "식비" },
-    { id: "t-0905", type: "expense", date: "2026-09-05", accountId: "cash", categoryId: "etc-expense", amount: 10980, memo: "기타" },
-    { id: "t-0907", type: "expense", date: "2026-09-07", accountId: "cash", categoryId: "snack", amount: 3300, memo: "커피" },
-    { id: "t-0908", type: "expense", date: "2026-09-08", accountId: "woori", categoryId: "food", amount: 27000, memo: "저녁" },
-    { id: "t-0909", type: "expense", date: "2026-09-09", accountId: "kakao", categoryId: "food", amount: 18500, memo: "식비" },
-    { id: "t-0910-i", type: "income", date: "2026-09-10", accountId: "woori", categoryId: "allowance", amount: 26050, memo: "입금" },
-    { id: "t-0910-e", type: "expense", date: "2026-09-10", accountId: "cash", categoryId: "snack", amount: 2900, memo: "음료" },
-    { id: "t-0911", type: "expense", date: "2026-09-11", accountId: "kakao", categoryId: "transport", amount: 19480, memo: "교통" },
-    { id: "t-0912", type: "expense", date: "2026-09-12", accountId: "cash", categoryId: "snack", amount: 1800, memo: "간식" },
-    { id: "t-0914", type: "expense", date: "2026-09-14", accountId: "woori", categoryId: "food", amount: 38500, memo: "식비" },
-    { id: "t-0915", type: "expense", date: "2026-09-15", accountId: "kakao", categoryId: "life", amount: 40905, memo: "생활용품" },
-    { id: "t-0916", type: "expense", date: "2026-09-16", accountId: "cash", categoryId: "snack", amount: 9950, memo: "카페" },
-    { id: "t-0917", type: "expense", date: "2026-09-17", accountId: "kakao", categoryId: "etc-expense", amount: 9700, memo: "기타" },
-    { id: "t-0918", type: "expense", date: "2026-09-18", accountId: "cash", categoryId: "snack", amount: 5500, memo: "간식" },
-    { id: "t-0919-i", type: "income", date: "2026-09-19", accountId: "woori", categoryId: "part-time", amount: 270003, memo: "알바비" },
-    { id: "t-0919-e", type: "expense", date: "2026-09-19", accountId: "woori", categoryId: "etc-expense", amount: 33100, memo: "기타" },
-    { id: "t-0921", type: "expense", date: "2026-09-21", accountId: "cash", categoryId: "snack", amount: 12290, memo: "디저트" },
-    { id: "t-0922", type: "expense", date: "2026-09-22", accountId: "kakao", categoryId: "food", amount: 67000, memo: "식비" },
-    { id: "t-0923", type: "expense", date: "2026-09-23", accountId: "woori", categoryId: "transport", amount: 12390, memo: "교통" },
-    { id: "t-0924", type: "income", date: "2026-09-24", accountId: "kakao", categoryId: "etc-income", amount: 18501, memo: "정산" },
-    { id: "t-0925-i", type: "income", date: "2026-09-25", accountId: "cash", categoryId: "gift", amount: 60000, memo: "선물" },
-    { id: "t-0925-e", type: "expense", date: "2026-09-25", accountId: "cash", categoryId: "transport", amount: 11300, memo: "택시" },
-    { id: "t-0926", type: "income", date: "2026-09-26", accountId: "woori", categoryId: "interest", amount: 116, memo: "이자" },
-    { id: "t-0801", type: "expense", date: "2026-08-01", accountId: "woori", categoryId: "food", amount: 48000, memo: "식비" },
-    { id: "t-0803", type: "expense", date: "2026-08-03", accountId: "cash", categoryId: "snack", amount: 23500, memo: "카페" },
-    { id: "t-0805", type: "expense", date: "2026-08-05", accountId: "kakao", categoryId: "shopping", amount: 82000, memo: "쇼핑" },
-    { id: "t-0808", type: "expense", date: "2026-08-08", accountId: "woori", categoryId: "food", amount: 64000, memo: "외식" },
-    { id: "t-0810", type: "income", date: "2026-08-10", accountId: "woori", categoryId: "part-time", amount: 310000, memo: "알바비" },
-    { id: "t-0812", type: "expense", date: "2026-08-12", accountId: "cash", categoryId: "transport", amount: 24600, memo: "교통" },
-    { id: "t-0815", type: "expense", date: "2026-08-15", accountId: "kakao", categoryId: "life", amount: 71700, memo: "생활비" },
-    { id: "t-0818", type: "expense", date: "2026-08-18", accountId: "woori", categoryId: "food", amount: 93000, memo: "식비" },
-    { id: "t-0821", type: "expense", date: "2026-08-21", accountId: "kakao", categoryId: "shopping", amount: 120500, memo: "쇼핑" },
-    { id: "t-0824", type: "expense", date: "2026-08-24", accountId: "cash", categoryId: "snack", amount: 38600, memo: "간식" },
-    { id: "t-0827", type: "expense", date: "2026-08-27", accountId: "woori", categoryId: "etc-expense", amount: 74200, memo: "기타" },
-    { id: "t-0830", type: "expense", date: "2026-08-30", accountId: "kakao", categoryId: "food", amount: 53685, memo: "식비" }
-  ]
+  transactions: []
 };
 
 let state = loadState();
@@ -120,6 +76,13 @@ function mergeState(base, saved) {
 
 function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+function localDateISO(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function money(value, signed = false) {
@@ -221,7 +184,7 @@ function renderNavigation() {
   document.querySelectorAll(".bottom-nav button").forEach((button) => {
     button.classList.toggle("is-active", button.dataset.view === state.selectedView);
   });
-  document.querySelector(".floating-add")?.classList.toggle("is-hidden", state.selectedView === "home");
+  document.querySelector(".floating-add")?.classList.toggle("is-hidden", state.selectedView === "home" || !state.accounts.length);
 }
 
 function renderHome() {
@@ -230,8 +193,8 @@ function renderHome() {
   byId("hide-balance-toggle").checked = state.hideBalance;
   document.querySelector(".balance-card").classList.toggle("is-hidden-balance", state.hideBalance);
 
-  byId("account-list").innerHTML = state.accounts
-    .map((account, index) => `
+  byId("account-list").innerHTML = state.accounts.length
+    ? state.accounts.map((account, index) => `
       <article class="account-card${state.hideBalance ? " is-hidden-balance" : ""}">
         <header>
           <h2>${escapeHTML(account.name)}</h2>
@@ -244,8 +207,13 @@ function renderHome() {
           <button class="pill-button" type="button" data-action="open-transaction" data-account-id="${account.id}">추가</button>
         </div>
       </article>
-    `)
-    .join("");
+    `).join("")
+    : `
+      <div class="account-empty-state">
+        <strong>등록된 계좌가 없어요</strong>
+        <span>첫 계좌를 추가하고 가계부를 시작해 보세요.</span>
+      </div>
+    `;
 }
 
 function renderReport() {
@@ -552,6 +520,13 @@ function renderBalanceSheet() {
 }
 
 function openTransaction(accountId) {
+  if (!state.accounts.length) {
+    state.selectedView = "settings";
+    byId("account-manager").classList.add("is-open");
+    toast("먼저 계좌를 추가해 주세요.");
+    render();
+    return;
+  }
   entry = {
     id: null,
     type: "expense",
@@ -591,6 +566,10 @@ function closeTransaction() {
 
 function saveTransaction() {
   const amount = Number(entry.amount);
+  if (!getAccount(entry.accountId)) {
+    toast("계좌를 선택해 주세요.");
+    return;
+  }
   if (!amount) {
     toast("금액을 입력해 주세요.");
     return;
@@ -834,10 +813,6 @@ document.addEventListener("click", (event) => {
   if (action === "move-category") moveCategory(button.dataset.categoryId, button.dataset.direction);
   if (action === "adjust-account") openBalanceAdjustment(button.dataset.accountId);
   if (action === "select-entry-category") entry.categoryId = button.dataset.categoryId;
-  if (action === "reset-demo") {
-    state = structuredClone(seedState);
-    toast("샘플 데이터를 다시 불러왔어요.");
-  }
   render();
 });
 

@@ -1,9 +1,9 @@
-const CACHE_NAME = "yeeun-budget-book-v2";
+const CACHE_NAME = "yeeun-budget-book-v3";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./styles.css?v=14",
-  "./app.js?v=15",
+  "./styles.css?v=15",
+  "./app.js?v=16",
   "./manifest.webmanifest",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
