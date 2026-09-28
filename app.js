@@ -1,6 +1,7 @@
 const STORAGE_KEY = "yeeun-budget-book-state-v4";
 const SYNC_META_KEY = "yeeun-budget-book-sync-meta-v1";
 const CLIENT_ID_KEY = "yeeun-budget-book-client-id-v1";
+const LEGACY_OWNER_KEY = "yeeun-budget-book-legacy-owner-v1";
 const todayISO = localDateISO();
 const REPORT_CATEGORY_LIMIT = 10;
 const CLOUD_SAVE_DELAY = 700;
@@ -35,12 +36,16 @@ const seedState = {
   transactions: []
 };
 
-let state = loadState();
+let activeStorageKey = STORAGE_KEY;
+let state = loadState(activeStorageKey);
 if (state.selectedView === "account") state.selectedView = "home";
 const clientId = getClientId();
 const expandedReportCategories = new Set();
 let cloudClient = null;
 let authUser = null;
+let authProfile = null;
+let authMode = "login";
+let checkedUsername = "";
 let realtimeChannel = null;
 let cloudSaveTimer = null;
 let applyingCloudState = false;
@@ -75,8 +80,8 @@ let balanceAdjustment = {
 
 const hiddenBalanceMessages = ["잔고 비밀 유지 중", "내 잔고는 비밀", "통장 지키는 중"];
 
-function loadState() {
-  const saved = localStorage.getItem(STORAGE_KEY);
+function loadState(storageKey = activeStorageKey) {
+  const saved = localStorage.getItem(storageKey);
   if (!saved) return structuredClone(seedState);
   try {
     return mergeState(structuredClone(seedState), JSON.parse(saved));
@@ -99,7 +104,7 @@ function mergeState(base, saved) {
 }
 
 function saveState() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  localStorage.setItem(activeStorageKey, JSON.stringify(state));
   const nextCloudPayloadJSON = JSON.stringify(buildCloudPayload());
   if (!applyingCloudState && nextCloudPayloadJSON !== lastCloudPayloadJSON) {
     lastCloudPayloadJSON = nextCloudPayloadJSON;
@@ -138,14 +143,57 @@ function buildCloudPayload() {
 
 function readSyncMeta() {
   try {
-    return JSON.parse(localStorage.getItem(SYNC_META_KEY)) ?? {};
+    return JSON.parse(localStorage.getItem(syncMetaKey())) ?? {};
   } catch {
     return {};
   }
 }
 
 function writeSyncMeta(patch) {
-  localStorage.setItem(SYNC_META_KEY, JSON.stringify({ ...readSyncMeta(), ...patch }));
+  localStorage.setItem(syncMetaKey(), JSON.stringify({ ...readSyncMeta(), ...patch }));
+}
+
+function userStorageKey(userId) {
+  return `${STORAGE_KEY}:${userId}`;
+}
+
+function syncMetaKey() {
+  return activeSyncUserId ? `${SYNC_META_KEY}:${activeSyncUserId}` : SYNC_META_KEY;
+}
+
+function loadUserState(userId) {
+  const nextStorageKey = userStorageKey(userId);
+  const hasUserState = Boolean(localStorage.getItem(nextStorageKey));
+  const legacyOwner = localStorage.getItem(LEGACY_OWNER_KEY);
+  const canClaimLegacy = !hasUserState && (!legacyOwner || legacyOwner === userId);
+
+  activeStorageKey = nextStorageKey;
+  if (hasUserState) {
+    state = loadState(nextStorageKey);
+  } else if (canClaimLegacy && localStorage.getItem(STORAGE_KEY)) {
+    state = loadState(STORAGE_KEY);
+    localStorage.setItem(LEGACY_OWNER_KEY, userId);
+    localStorage.setItem(nextStorageKey, JSON.stringify(state));
+  } else {
+    state = structuredClone(seedState);
+  }
+
+  if (state.selectedView === "account") state.selectedView = "home";
+  lastCloudPayloadJSON = JSON.stringify(buildCloudPayload());
+  entry = {
+    id: null,
+    type: "expense",
+    amount: "",
+    date: todayISO,
+    accountId: state.accounts[0]?.id ?? "",
+    categoryId: state.categories.expense[0]?.id ?? "",
+    memo: ""
+  };
+  accountDetail = {
+    accountId: "",
+    month: state.reportMonth || todayISO.slice(0, 7),
+    filter: "all"
+  };
 }
 
 function setSyncStatus(kind, title, copy) {
@@ -624,12 +672,11 @@ function renderSettings() {
 }
 
 function renderCloudSettings() {
-  const loginForm = byId("cloud-login-form");
-  if (!loginForm) return;
-  const signedIn = Boolean(authUser);
-  loginForm.hidden = signedIn;
-  byId("cloud-account").hidden = !signedIn;
-  byId("cloud-account-email").textContent = authUser?.email ?? "";
+  if (!byId("cloud-account")) return;
+  const username = authProfile?.username ?? authUser?.user_metadata?.username ?? "";
+  const displayName = authProfile?.display_name ?? authUser?.user_metadata?.display_name ?? username ?? "사용자";
+  byId("cloud-account-name").textContent = displayName || "사용자";
+  byId("cloud-account-username").textContent = username ? `@${username}` : "";
   byId("sync-status-title").textContent = syncStatus.title;
   byId("sync-status-copy").textContent = syncStatus.copy;
   byId("sync-status-dot").className = `sync-status-dot is-${syncStatus.kind}`;
@@ -1071,19 +1118,28 @@ function subscribeToCloudChanges() {
 async function handleCloudSession(session) {
   if (!session?.user) {
     authUser = null;
+    authProfile = null;
     activeSyncUserId = null;
+    activeStorageKey = STORAGE_KEY;
     if (realtimeChannel && cloudClient) cloudClient.removeChannel(realtimeChannel);
     realtimeChannel = null;
     setSyncStatus("idle", "로그인 필요", "로그인하면 여러 기기에서 같은 가계부를 볼 수 있어요.");
+    showAuthScreen();
     return;
   }
 
   authUser = session.user;
-  renderCloudSettings();
-  if (activeSyncUserId === authUser.id) return;
+  if (activeSyncUserId === authUser.id) {
+    showAppScreen();
+    return;
+  }
   activeSyncUserId = authUser.id;
+  loadUserState(authUser.id);
+  await ensureProfile();
   await syncFromCloud();
   subscribeToCloudChanges();
+  render();
+  showAppScreen();
 }
 
 async function initializeCloudSync() {
@@ -1108,40 +1164,213 @@ async function initializeCloudSync() {
     });
   } catch (error) {
     handleCloudError(error);
+    showAuthScreen("클라우드에 연결하지 못했어요. 잠시 후 다시 시도해 주세요.");
   }
 }
 
-async function requestCloudLogin(event) {
+function normalizeUsername(username) {
+  return username.trim().toLowerCase();
+}
+
+function usernameToAuthEmail(username) {
+  return `${normalizeUsername(username)}@yeeun-budget-user.example.com`;
+}
+
+function isValidUsername(username) {
+  return /^[a-z0-9_]{3,20}$/.test(username);
+}
+
+function setAuthMessage(message, kind = "") {
+  const element = byId("auth-error");
+  element.textContent = message;
+  element.classList.toggle("is-success", kind === "success");
+}
+
+function setPasswordMessage(message, kind = "") {
+  const element = byId("auth-password-message");
+  element.textContent = message;
+  element.classList.toggle("is-success", kind === "success");
+}
+
+function setAuthMode(mode) {
+  authMode = mode;
+  checkedUsername = "";
+  const isSignup = mode === "signup";
+  document.body.classList.toggle("is-signup", isSignup);
+  document.querySelectorAll(".signup-only").forEach((element) => {
+    element.hidden = !isSignup;
+  });
+  document.querySelectorAll(".login-only").forEach((element) => {
+    element.hidden = isSignup;
+  });
+  byId("auth-display-name").required = isSignup;
+  byId("auth-password-confirm").required = isSignup;
+  byId("auth-password").autocomplete = isSignup ? "new-password" : "current-password";
+  byId("auth-title").textContent = isSignup ? "회원가입" : "로그인";
+  byId("auth-copy").textContent = isSignup ? "아이디와 비밀번호로 새 가계부를 만들어요." : "내 가계부를 이어서 기록해요.";
+  byId("auth-submit").textContent = isSignup ? "회원가입" : "로그인";
+  setAuthMessage("");
+  setPasswordMessage("");
+}
+
+function showAuthScreen(message = "") {
+  document.body.classList.remove("is-auth-loading", "is-authenticated");
+  setAuthMode("login");
+  setAuthMessage(message);
+  byId("auth-password").value = "";
+  byId("auth-password-confirm").value = "";
+}
+
+function showAppScreen() {
+  document.body.classList.remove("is-auth-loading", "is-signup");
+  document.body.classList.add("is-authenticated");
+}
+
+function authErrorMessage(error, fallback) {
+  const message = error?.message ?? "";
+  if (message.includes("Failed to fetch") || message.includes("fetch")) {
+    return "서버에 연결하지 못했어요. 인터넷 연결을 확인해 주세요.";
+  }
+  return fallback || message || "잠시 후 다시 시도해 주세요.";
+}
+
+async function ensureProfile() {
+  if (!cloudClient || !authUser) return;
+  const { data, error } = await cloudClient
+    .from("profiles")
+    .select("username, display_name, created_at")
+    .eq("id", authUser.id)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Profile load error", error);
+    authProfile = null;
+    return;
+  }
+
+  if (data) {
+    authProfile = data;
+    return;
+  }
+
+  const username = authUser.user_metadata?.username;
+  if (!username) return;
+  const displayName = authUser.user_metadata?.display_name || username;
+  const { error: saveError } = await cloudClient.from("profiles").upsert({
+    id: authUser.id,
+    username,
+    auth_email: authUser.email,
+    display_name: displayName,
+    updated_at: new Date().toISOString()
+  });
+  if (!saveError) authProfile = { username, display_name: displayName };
+}
+
+async function checkUsernameAvailability() {
+  if (!cloudClient) return false;
+  const username = normalizeUsername(byId("auth-username").value);
+  checkedUsername = "";
+  if (!isValidUsername(username)) {
+    setAuthMessage("아이디는 영문 소문자, 숫자, 밑줄 3~20자로 입력해 주세요.");
+    return false;
+  }
+
+  const { data, error } = await cloudClient.rpc("is_username_available", { requested_username: username });
+  if (error) {
+    setAuthMessage(authErrorMessage(error, "아이디를 확인하지 못했어요."));
+    return false;
+  }
+  if (!data) {
+    setAuthMessage("이미 사용 중인 아이디예요.");
+    return false;
+  }
+  checkedUsername = username;
+  setAuthMessage("사용 가능한 아이디예요.", "success");
+  return true;
+}
+
+function checkPasswordMatch() {
+  const password = byId("auth-password").value;
+  const confirmation = byId("auth-password-confirm").value;
+  if (password.length < 6) {
+    setPasswordMessage("비밀번호는 6자 이상 입력해 주세요.");
+    return false;
+  }
+  if (password !== confirmation) {
+    setPasswordMessage("비밀번호가 일치하지 않아요.");
+    return false;
+  }
+  setPasswordMessage("비밀번호가 일치해요.", "success");
+  return true;
+}
+
+async function handleAuthSubmit(event) {
   event.preventDefault();
   if (!cloudClient) {
-    toast("클라우드 연결을 확인해 주세요.");
+    setAuthMessage("클라우드 연결을 확인해 주세요.");
     return;
   }
-  const email = byId("cloud-email-input").value.trim();
-  if (!email) return;
-  const button = event.submitter ?? event.currentTarget.querySelector("button[type=submit]");
-  button.disabled = true;
-  setSyncStatus("syncing", "로그인 메일 전송 중", "잠시만 기다려 주세요.");
-  const { error } = await cloudClient.auth.signInWithOtp({
-    email,
-    options: {
-      emailRedirectTo: new URL(".", window.location.href).href,
-      shouldCreateUser: true
+
+  const username = normalizeUsername(byId("auth-username").value);
+  const password = byId("auth-password").value;
+  const submitButton = byId("auth-submit");
+  submitButton.disabled = true;
+  setAuthMessage(authMode === "signup" ? "계정을 만들고 있어요." : "로그인하고 있어요.");
+
+  try {
+    if (authMode === "login") {
+      const { data, error } = await cloudClient.auth.signInWithPassword({
+        email: usernameToAuthEmail(username),
+        password
+      });
+      if (error) {
+        setAuthMessage("아이디 또는 비밀번호가 올바르지 않아요.");
+        return;
+      }
+      await handleCloudSession(data.session);
+      return;
     }
-  });
-  button.disabled = false;
-  if (error) {
-    handleCloudError(error);
-    return;
+
+    const displayName = byId("auth-display-name").value.trim();
+    if (!isValidUsername(username)) {
+      setAuthMessage("아이디는 영문 소문자, 숫자, 밑줄 3~20자로 입력해 주세요.");
+      return;
+    }
+    if (checkedUsername !== username) {
+      setAuthMessage("아이디 중복확인을 먼저 해주세요.");
+      return;
+    }
+    if (!displayName) {
+      setAuthMessage("이름을 입력해 주세요.");
+      return;
+    }
+    if (!checkPasswordMatch()) return;
+
+    const { data, error } = await cloudClient.auth.signUp({
+      email: usernameToAuthEmail(username),
+      password,
+      options: { data: { username, display_name: displayName } }
+    });
+    if (error) {
+      setAuthMessage(error.message.includes("already registered") ? "이미 사용 중인 아이디예요." : authErrorMessage(error));
+      return;
+    }
+    if (!data.session) {
+      showAuthScreen("회원가입은 완료됐지만 로그인이 필요해요. 같은 정보로 로그인해 주세요.");
+      return;
+    }
+    await handleCloudSession(data.session);
+  } catch (error) {
+    setAuthMessage(authErrorMessage(error));
+  } finally {
+    submitButton.disabled = false;
   }
-  setSyncStatus("synced", "메일을 확인해 주세요", "받은 로그인 링크를 열면 동기화가 시작돼요.");
-  toast("로그인 링크를 보냈어요.");
 }
 
 async function signOutCloud() {
   if (!cloudClient) return;
   await cloudClient.auth.signOut();
-  toast("클라우드에서 로그아웃했어요.");
+  showAuthScreen("로그아웃했어요.");
 }
 
 function exportBackup() {
@@ -1328,7 +1557,17 @@ byId("save-transaction").addEventListener("click", saveTransaction);
 byId("save-balance").addEventListener("click", saveBalanceAdjustment);
 byId("account-form").addEventListener("submit", addAccount);
 byId("category-form").addEventListener("submit", addCategory);
-byId("cloud-login-form").addEventListener("submit", requestCloudLogin);
+byId("auth-form").addEventListener("submit", handleAuthSubmit);
+byId("show-signup-button").addEventListener("click", () => setAuthMode("signup"));
+byId("show-login-button").addEventListener("click", () => setAuthMode("login"));
+byId("check-username-button").addEventListener("click", checkUsernameAvailability);
+byId("check-password-button").addEventListener("click", checkPasswordMatch);
+byId("auth-username").addEventListener("input", () => {
+  checkedUsername = "";
+  setAuthMessage("");
+});
+byId("auth-password").addEventListener("input", () => setPasswordMessage(""));
+byId("auth-password-confirm").addEventListener("input", () => setPasswordMessage(""));
 byId("backup-file-input").addEventListener("change", importBackup);
 
 window.addEventListener("online", () => syncFromCloud());

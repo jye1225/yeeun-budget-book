@@ -18,9 +18,57 @@
       crossorigin
       href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
     />
-    <link rel="stylesheet" href="./styles.css?v=17" />
+    <link rel="stylesheet" href="./styles.css?v=18" />
   </head>
-  <body>
+  <body class="is-auth-loading">
+    <section class="auth-screen" id="auth-screen" aria-label="로그인">
+      <div class="auth-brand" aria-hidden="true">
+        <span></span><span></span><span></span>
+        <span></span><span></span><span></span>
+      </div>
+
+      <form class="auth-card" id="auth-form">
+        <div class="auth-heading">
+          <p>예은 가계부</p>
+          <h1 id="auth-title">로그인</h1>
+          <span id="auth-copy">내 가계부를 이어서 기록해요.</span>
+        </div>
+
+        <button class="auth-back signup-only" id="show-login-button" type="button" hidden>로그인으로 돌아가기</button>
+
+        <label>
+          <span>아이디</span>
+          <span class="auth-input-row">
+            <input id="auth-username" name="username" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" required />
+            <button class="auth-check-button signup-only" id="check-username-button" type="button" hidden>중복확인</button>
+          </span>
+        </label>
+
+        <label class="signup-only" hidden>
+          <span>이름</span>
+          <input id="auth-display-name" name="displayName" type="text" autocomplete="name" maxlength="20" />
+        </label>
+
+        <label>
+          <span>비밀번호</span>
+          <input id="auth-password" name="password" type="password" autocomplete="current-password" required />
+        </label>
+
+        <label class="signup-only" hidden>
+          <span>비밀번호 확인</span>
+          <span class="auth-input-row">
+            <input id="auth-password-confirm" name="passwordConfirm" type="password" autocomplete="new-password" />
+            <button class="auth-check-button signup-only" id="check-password-button" type="button" hidden>확인</button>
+          </span>
+        </label>
+
+        <p class="auth-password-message signup-only" id="auth-password-message" aria-live="polite" hidden></p>
+        <p class="auth-error" id="auth-error" role="alert">로그인 상태를 확인하고 있어요.</p>
+        <button class="auth-submit" id="auth-submit" type="submit">로그인</button>
+        <button class="auth-mode-button login-only" id="show-signup-button" type="button">회원가입하기</button>
+      </form>
+    </section>
+
     <div class="app-shell">
       <main class="app-main">
         <section class="view view-home is-active" id="home-view" aria-labelledby="home-title">
@@ -186,19 +234,11 @@
                 </div>
               </div>
 
-              <form class="cloud-login-form" id="cloud-login-form">
-                <label for="cloud-email-input">이메일</label>
-                <div>
-                  <input type="email" id="cloud-email-input" placeholder="name@example.com" autocomplete="email" required />
-                  <button type="submit">로그인 링크 받기</button>
-                </div>
-                <p>메일로 받은 링크를 열면 이 기기와 자동으로 연결돼요.</p>
-              </form>
-
-              <div class="cloud-account" id="cloud-account" hidden>
+              <div class="cloud-account" id="cloud-account">
                 <div>
                   <span>연결된 계정</span>
-                  <strong id="cloud-account-email"></strong>
+                  <strong id="cloud-account-name">사용자</strong>
+                  <small id="cloud-account-username"></small>
                 </div>
                 <div class="cloud-actions">
                   <button type="button" data-action="sync-now">지금 동기화</button>
@@ -365,6 +405,6 @@
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="./supabase-config.js?v=1"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="./app.js?v=18"></script>
+    <script src="./app.js?v=19"></script>
   </body>
 </html>
