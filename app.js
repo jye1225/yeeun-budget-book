@@ -692,6 +692,7 @@ function renderEntrySheet() {
   const isEditing = Boolean(entry.id);
   byId("entry-title").textContent = isEditing ? "내역 수정" : "추가";
   byId("save-transaction").textContent = isEditing ? "수정 완료" : "완료";
+  byId("delete-transaction").hidden = !isEditing;
   byId("entry-date").value = entry.date;
   byId("entry-account").innerHTML = state.accounts
     .map((account) => `<option value="${account.id}" ${account.id === entry.accountId ? "selected" : ""}>${escapeHTML(account.name)}</option>`)
@@ -820,6 +821,25 @@ function saveTransaction() {
   }
   closeTransaction();
   toast(existingTransaction ? "내역을 수정했어요." : "기록을 추가했어요.");
+  render();
+}
+
+function deleteTransaction() {
+  const transaction = entry.id
+    ? state.transactions.find((item) => item.id === entry.id)
+    : null;
+  if (!transaction) return;
+
+  if (!window.confirm("이 내역을 삭제할까요?")) return;
+  applyTransactionToAccount(transaction, -1);
+  state.transactions = state.transactions.filter((item) => item.id !== transaction.id);
+  state.reportMonth = monthOf(transaction.date);
+  if (state.selectedView === "account") {
+    accountDetail.accountId = transaction.accountId;
+    accountDetail.month = state.reportMonth;
+  }
+  closeTransaction();
+  toast("내역을 삭제했어요.");
   render();
 }
 
@@ -1596,6 +1616,7 @@ byId("balance-keypad").addEventListener("click", (event) => {
 });
 
 byId("save-transaction").addEventListener("click", saveTransaction);
+byId("delete-transaction").addEventListener("click", deleteTransaction);
 document.querySelector('[data-action="close-transaction"]').addEventListener("click", (event) => {
   event.preventDefault();
   event.stopPropagation();

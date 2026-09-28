@@ -1425,7 +1425,7 @@ svg {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
-  margin-top: 90px;
+  margin-top: 34px;
 }
 
 .amount-display {
@@ -1522,6 +1522,17 @@ svg {
 
 .primary-action.is-ready {
   background: var(--blue);
+}
+
+.delete-action {
+  width: 100%;
+  min-height: 46px;
+  margin-top: 8px;
+  border-radius: 14px;
+  color: #e64e5e;
+  background: #fff1f3;
+  font-size: 0.9rem;
+  font-weight: 550;
 }
 
 .day-sheet {
