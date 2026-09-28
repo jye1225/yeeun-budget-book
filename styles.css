@@ -1412,8 +1412,12 @@ svg {
 
 .close-button {
   position: absolute;
-  top: 28px;
-  left: 22px;
+  top: 24px;
+  left: 18px;
+  z-index: 4;
+  width: 60px;
+  height: 60px;
+  touch-action: manipulation;
   color: #a6abb2;
 }
 
@@ -1455,24 +1459,31 @@ svg {
 
 .category-chips {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   overflow-x: auto;
-  padding-bottom: 4px;
+  padding: 3px 3px 5px;
+  scrollbar-width: none;
+}
+
+.category-chips::-webkit-scrollbar {
+  display: none;
 }
 
 .category-chip {
   flex: 0 0 auto;
-  min-width: 58px;
-  height: 58px;
-  padding: 0 14px;
+  min-width: 48px;
+  height: 44px;
+  padding: 0 12px;
   border-radius: 999px;
   color: white;
   background: var(--blue);
+  font-size: 0.86rem;
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .category-chip.is-active {
-  box-shadow: inset 0 0 0 4px white, 0 0 0 3px currentColor;
+  box-shadow: inset 0 0 0 3px white, 0 0 0 2px currentColor;
 }
 
 .memo-input {

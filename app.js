@@ -1596,6 +1596,11 @@ byId("balance-keypad").addEventListener("click", (event) => {
 });
 
 byId("save-transaction").addEventListener("click", saveTransaction);
+document.querySelector('[data-action="close-transaction"]').addEventListener("click", (event) => {
+  event.preventDefault();
+  event.stopPropagation();
+  closeTransaction();
+});
 byId("save-balance").addEventListener("click", saveBalanceAdjustment);
 byId("account-form").addEventListener("submit", addAccount);
 byId("category-form").addEventListener("submit", addCategory);
