@@ -1524,14 +1524,20 @@ svg {
   background: var(--blue);
 }
 
+.entry-sheet .primary-action {
+  min-height: 46px;
+  border-radius: 999px;
+  font-size: 0.95rem;
+}
+
 .delete-action {
   width: 100%;
   min-height: 46px;
   margin-top: 8px;
-  border-radius: 14px;
+  border-radius: 999px;
   color: #e64e5e;
   background: #fff1f3;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   font-weight: 550;
 }
 
