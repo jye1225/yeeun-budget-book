@@ -18,7 +18,7 @@
       crossorigin
       href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
     />
-    <link rel="stylesheet" href="./styles.css?v=21" />
+    <link rel="stylesheet" href="./styles.css?v=22" />
   </head>
   <body class="is-auth-loading">
     <section class="auth-screen" id="auth-screen" aria-label="로그인">
@@ -140,6 +140,51 @@
             </header>
             <div class="account-history-list" id="account-history-list"></div>
           </section>
+        </section>
+
+        <section class="view view-transaction-detail" id="transaction-detail-view" aria-labelledby="transaction-detail-title">
+          <header class="transaction-detail-topbar">
+            <button class="icon-button" type="button" data-action="close-transaction-detail" aria-label="이전 화면으로 돌아가기">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18 9 12l6-6" /></svg>
+            </button>
+            <h1 id="transaction-detail-title">상세 내역</h1>
+            <button class="transaction-detail-edit" type="button" data-action="edit-detail-transaction">수정</button>
+          </header>
+
+          <div class="transaction-detail-body">
+            <section class="transaction-detail-summary">
+              <div class="transaction-detail-kind">
+                <i id="transaction-detail-mark" aria-hidden="true">₩</i>
+                <span id="transaction-detail-type">지출</span>
+              </div>
+              <strong id="transaction-detail-amount">0원</strong>
+              <span class="excluded-badge" id="transaction-detail-excluded" hidden>합계 제외</span>
+            </section>
+
+            <section class="transaction-detail-list" aria-label="거래 정보">
+              <div class="transaction-detail-row">
+                <span>카테고리</span>
+                <strong id="transaction-detail-category">기타</strong>
+              </div>
+              <div class="transaction-detail-row">
+                <span>메모</span>
+                <strong id="transaction-detail-memo">메모 없음</strong>
+              </div>
+              <label class="transaction-detail-row transaction-total-toggle">
+                <span id="transaction-total-toggle-label">지출 합계에 포함</span>
+                <input type="checkbox" id="transaction-total-toggle" />
+                <i aria-hidden="true"></i>
+              </label>
+              <div class="transaction-detail-row">
+                <span>계좌</span>
+                <strong id="transaction-detail-account">계좌</strong>
+              </div>
+              <div class="transaction-detail-row">
+                <span>거래일</span>
+                <strong id="transaction-detail-date">-</strong>
+              </div>
+            </section>
+          </div>
         </section>
 
         <section class="view view-report" id="report-view" aria-labelledby="report-title">
@@ -406,6 +451,6 @@
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="./supabase-config.js?v=1"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="./app.js?v=22"></script>
+    <script src="./app.js?v=23"></script>
   </body>
 </html>

@@ -38,7 +38,7 @@ const seedState = {
 
 let activeStorageKey = STORAGE_KEY;
 let state = loadState(activeStorageKey);
-if (state.selectedView === "account") state.selectedView = "home";
+if (["account", "transaction-detail"].includes(state.selectedView)) state.selectedView = "home";
 const clientId = getClientId();
 const expandedReportCategories = new Set();
 let cloudClient = null;
@@ -71,6 +71,11 @@ let accountDetail = {
   accountId: "",
   month: todayISO.slice(0, 7),
   filter: "all"
+};
+
+let transactionDetail = {
+  transactionId: "",
+  returnView: "home"
 };
 
 let balanceAdjustment = {
@@ -179,7 +184,7 @@ function loadUserState(userId) {
     state = structuredClone(seedState);
   }
 
-  if (state.selectedView === "account") state.selectedView = "home";
+  if (["account", "transaction-detail"].includes(state.selectedView)) state.selectedView = "home";
   lastCloudPayloadJSON = JSON.stringify(buildCloudPayload());
   entry = {
     id: null,
@@ -194,6 +199,10 @@ function loadUserState(userId) {
     accountId: "",
     month: state.reportMonth || todayISO.slice(0, 7),
     filter: "all"
+  };
+  transactionDetail = {
+    transactionId: "",
+    returnView: "home"
   };
 }
 
@@ -269,11 +278,12 @@ function nextMonth(month) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
 }
 
-function transactionsForMonth(month, type = "all") {
+function transactionsForMonth(month, type = "all", { includeExcluded = false } = {}) {
   return state.transactions.filter((transaction) => {
     const matchesMonth = monthOf(transaction.date) === month;
     const matchesType = type === "all" || transaction.type === type;
-    return matchesMonth && matchesType;
+    const matchesInclusion = includeExcluded || !transaction.excludedFromTotals;
+    return matchesMonth && matchesType && matchesInclusion;
   });
 }
 
@@ -299,6 +309,7 @@ function render() {
   renderNavigation();
   renderHome();
   renderAccountDetail();
+  renderTransactionDetail();
   renderReport();
   renderSettings();
   renderEntrySheet();
@@ -310,10 +321,17 @@ function renderNavigation() {
   document.querySelectorAll(".view").forEach((view) => view.classList.remove("is-active"));
   byId(`${state.selectedView}-view`)?.classList.add("is-active");
   document.querySelectorAll(".bottom-nav button").forEach((button) => {
-    const activeView = state.selectedView === "account" ? "home" : state.selectedView;
+    let activeView = state.selectedView;
+    if (activeView === "account") activeView = "home";
+    if (activeView === "transaction-detail") {
+      activeView = transactionDetail.returnView === "report" ? "report" : "home";
+    }
     button.classList.toggle("is-active", button.dataset.view === activeView);
   });
-  document.querySelector(".floating-add")?.classList.toggle("is-hidden", state.selectedView === "home" || !state.accounts.length);
+  document.querySelector(".floating-add")?.classList.toggle(
+    "is-hidden",
+    ["home", "transaction-detail"].includes(state.selectedView) || !state.accounts.length
+  );
 }
 
 function renderHome() {
@@ -365,8 +383,9 @@ function renderAccountDetail() {
   const visibleTransactions = accountDetail.filter === "all"
     ? monthTransactions
     : monthTransactions.filter((transaction) => transaction.type === accountDetail.filter);
-  const income = sumTransactions(monthTransactions, "income");
-  const expense = sumTransactions(monthTransactions, "expense");
+  const includedMonthTransactions = monthTransactions.filter((transaction) => !transaction.excludedFromTotals);
+  const income = sumTransactions(includedMonthTransactions, "income");
+  const expense = sumTransactions(includedMonthTransactions, "expense");
 
   byId("account-month-label").textContent = accountDetail.month;
   byId("account-detail-title").textContent = account.name;
@@ -391,11 +410,11 @@ function renderAccountTransaction(transaction) {
   const signedAmount = transaction.type === "income" ? transaction.amount : -transaction.amount;
   const dateLabel = new Intl.DateTimeFormat("ko-KR", { month: "long", day: "numeric" }).format(new Date(`${transaction.date}T00:00:00`));
   return `
-    <button class="account-transaction-row" type="button" data-action="edit-transaction" data-transaction-id="${escapeHTML(transaction.id)}">
+    <button class="account-transaction-row" type="button" data-action="open-transaction-detail" data-transaction-id="${escapeHTML(transaction.id)}">
       <i class="category-mark" style="background:${category.color}" aria-hidden="true"></i>
       <span class="account-transaction-copy">
         <strong>${escapeHTML(transaction.memo || category.name)}</strong>
-        <span>${dateLabel} · ${escapeHTML(category.name)}</span>
+        <span>${dateLabel} · ${escapeHTML(category.name)}${transaction.excludedFromTotals ? " · 합계 제외" : ""}</span>
       </span>
       <strong class="account-transaction-amount ${transaction.type}">${money(signedAmount, true)}</strong>
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
@@ -410,6 +429,48 @@ function openAccountDetail(accountId) {
   accountDetail.filter = "all";
   state.selectedView = "account";
   render();
+}
+
+function openTransactionDetail(transactionId) {
+  if (!state.transactions.some((transaction) => transaction.id === transactionId)) return;
+  transactionDetail = {
+    transactionId,
+    returnView: state.selectedView === "transaction-detail" ? transactionDetail.returnView : state.selectedView
+  };
+  closeDay();
+  state.selectedView = "transaction-detail";
+}
+
+function closeTransactionDetail() {
+  state.selectedView = transactionDetail.returnView || "home";
+}
+
+function renderTransactionDetail() {
+  const transaction = state.transactions.find((item) => item.id === transactionDetail.transactionId);
+  if (!transaction) return;
+
+  const category = getCategory(transaction.type, transaction.categoryId);
+  const account = getAccount(transaction.accountId);
+  const signedAmount = transaction.type === "income" ? transaction.amount : -transaction.amount;
+  const typeLabel = transaction.type === "income" ? "수입" : "지출";
+  const dateLabel = new Intl.DateTimeFormat("ko-KR", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    weekday: "short"
+  }).format(new Date(`${transaction.date}T00:00:00`));
+
+  byId("transaction-detail-type").textContent = typeLabel;
+  byId("transaction-detail-amount").textContent = money(signedAmount, true);
+  byId("transaction-detail-amount").className = transaction.type;
+  byId("transaction-detail-mark").style.background = category.color;
+  byId("transaction-detail-category").textContent = category.name;
+  byId("transaction-detail-memo").textContent = transaction.memo || "메모 없음";
+  byId("transaction-detail-account").textContent = account?.name ?? "삭제된 계좌";
+  byId("transaction-detail-date").textContent = dateLabel;
+  byId("transaction-total-toggle-label").textContent = `${typeLabel} 합계에 포함`;
+  byId("transaction-total-toggle").checked = !transaction.excludedFromTotals;
+  byId("transaction-detail-excluded").hidden = !transaction.excludedFromTotals;
 }
 
 function renderReport() {
@@ -495,10 +556,11 @@ function renderCalendar(month, transactions) {
   for (let day = 1; day <= days; day += 1) {
     const date = `${month}-${String(day).padStart(2, "0")}`;
     const dayTransactions = transactions.filter((transaction) => transaction.date === date);
+    const hasRecordedTransactions = state.transactions.some((transaction) => transaction.date === date);
     const income = sumTransactions(dayTransactions, "income");
     const expense = sumTransactions(dayTransactions, "expense");
     const todayClass = date === todayISO ? " is-today" : "";
-    const disabled = dayTransactions.length ? "" : " disabled";
+    const disabled = hasRecordedTransactions ? "" : " disabled";
     const amountLabel = [
       `${day}일`,
       income ? `수입 ${money(income)}` : "",
@@ -571,10 +633,18 @@ function categoryTotals(month, type) {
 
 function renderDetailedReport(month, type) {
   const typeLabel = type === "expense" ? "지출" : "수입";
-  const transactions = transactionsForMonth(month, type)
+  const transactions = transactionsForMonth(month, type, { includeExcluded: true })
     .slice()
     .sort((a, b) => b.date.localeCompare(a.date));
-  const totals = categoryTotals(month, type);
+  const categoryGroups = new Map();
+  transactions.forEach((transaction) => {
+    const category = getCategory(type, transaction.categoryId);
+    const group = categoryGroups.get(category.id) ?? { ...category, amount: 0, transactions: [] };
+    group.transactions.push(transaction);
+    if (!transaction.excludedFromTotals) group.amount += transaction.amount;
+    categoryGroups.set(category.id, group);
+  });
+  const groups = [...categoryGroups.values()].sort((a, b) => b.amount - a.amount);
 
   byId("report-detail-eyebrow").textContent = `${typeLabel} 내역`;
   byId("report-detail-title").textContent = "카테고리별 상세 내역";
@@ -585,9 +655,9 @@ function renderDetailedReport(month, type) {
     return;
   }
 
-  byId("report-detail-list").innerHTML = totals
+  byId("report-detail-list").innerHTML = groups
     .map((category) => {
-      const categoryTransactions = transactions.filter((transaction) => transaction.categoryId === category.id);
+      const categoryTransactions = category.transactions;
       const categoryKey = `${month}:${type}:${category.id}`;
       const isExpanded = expandedReportCategories.has(categoryKey);
       const visibleTransactions = isExpanded
@@ -628,10 +698,10 @@ function renderReportTransaction(transaction) {
   return `
     <div class="report-transaction">
       <time datetime="${transaction.date}">${Number(month)}.${Number(day)}</time>
-      <div class="report-transaction-copy">
+      <button class="report-transaction-copy" type="button" data-action="open-transaction-detail" data-transaction-id="${escapeHTML(transaction.id)}">
         <strong>${escapeHTML(transaction.memo || category.name)}</strong>
-        <span>${escapeHTML(account?.name ?? "계좌")}</span>
-      </div>
+        <span>${escapeHTML(account?.name ?? "계좌")}${transaction.excludedFromTotals ? " · 합계 제외" : ""}</span>
+      </button>
       <strong class="${transaction.type}">${money(signedAmount, true)}</strong>
       <button class="edit-transaction-button" type="button" data-action="edit-transaction" data-transaction-id="${escapeHTML(transaction.id)}" aria-label="${escapeHTML(category.name)} 내역 수정" title="내역 수정">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
@@ -793,6 +863,8 @@ function saveTransaction() {
     toast("카테고리를 선택해 주세요.");
     return;
   }
+  const existingIndex = entry.id ? state.transactions.findIndex((item) => item.id === entry.id) : -1;
+  const existingTransaction = existingIndex >= 0 ? state.transactions[existingIndex] : null;
   const transaction = {
     id: entry.id ?? `t-${Date.now()}`,
     type: entry.type,
@@ -800,10 +872,9 @@ function saveTransaction() {
     accountId: entry.accountId,
     categoryId: entry.categoryId,
     amount,
-    memo: byId("entry-memo").value.trim()
+    memo: byId("entry-memo").value.trim(),
+    excludedFromTotals: existingTransaction?.excludedFromTotals ?? false
   };
-  const existingIndex = entry.id ? state.transactions.findIndex((item) => item.id === entry.id) : -1;
-  const existingTransaction = existingIndex >= 0 ? state.transactions[existingIndex] : null;
 
   if (existingTransaction) {
     applyTransactionToAccount(existingTransaction, -1);
@@ -834,7 +905,10 @@ function deleteTransaction() {
   applyTransactionToAccount(transaction, -1);
   state.transactions = state.transactions.filter((item) => item.id !== transaction.id);
   state.reportMonth = monthOf(transaction.date);
-  if (state.selectedView === "account") {
+  if (state.selectedView === "transaction-detail") {
+    state.selectedView = transactionDetail.returnView || "home";
+    transactionDetail.transactionId = "";
+  } else if (state.selectedView === "account") {
     accountDetail.accountId = transaction.accountId;
     accountDetail.month = state.reportMonth;
   }
@@ -862,10 +936,10 @@ function openDay(date) {
       const signedAmount = transaction.type === "income" ? transaction.amount : -transaction.amount;
       return `
         <div class="day-transaction">
-          <div class="day-transaction-main">
+          <button class="day-transaction-main" type="button" data-action="open-transaction-detail" data-transaction-id="${escapeHTML(transaction.id)}">
             <strong>${escapeHTML(category.name)}</strong>
-            <span>${escapeHTML(account?.name ?? "계좌")} · ${escapeHTML(transaction.memo || "메모 없음")}</span>
-          </div>
+            <span>${escapeHTML(account?.name ?? "계좌")} · ${escapeHTML(transaction.memo || "메모 없음")}${transaction.excludedFromTotals ? " · 합계 제외" : ""}</span>
+          </button>
           <div class="day-transaction-actions">
             <strong class="${transaction.type}">${money(signedAmount, true)}</strong>
             <button class="edit-transaction-button" type="button" data-action="edit-transaction" data-transaction-id="${escapeHTML(transaction.id)}" aria-label="${escapeHTML(category.name)} 내역 수정" title="내역 수정">
@@ -1500,6 +1574,9 @@ document.addEventListener("click", (event) => {
 
   if (action === "open-account-detail") openAccountDetail(button.dataset.accountId);
   if (action === "close-account-detail") state.selectedView = "home";
+  if (action === "open-transaction-detail") openTransactionDetail(button.dataset.transactionId);
+  if (action === "close-transaction-detail") closeTransactionDetail();
+  if (action === "edit-detail-transaction") openEditTransaction(transactionDetail.transactionId);
   if (action === "prev-account-month") accountDetail.month = previousMonth(accountDetail.month);
   if (action === "next-account-month") accountDetail.month = nextMonth(accountDetail.month);
   if (action === "open-account-transaction") openTransaction(accountDetail.accountId);
@@ -1576,6 +1653,14 @@ document.querySelectorAll("[data-entry-type]").forEach((button) => {
 
 byId("hide-balance-toggle").addEventListener("change", (event) => {
   state.hideBalance = event.target.checked;
+  render();
+});
+
+byId("transaction-total-toggle").addEventListener("change", (event) => {
+  const transaction = state.transactions.find((item) => item.id === transactionDetail.transactionId);
+  if (!transaction) return;
+  transaction.excludedFromTotals = !event.target.checked;
+  toast(event.target.checked ? "합계에 포함했어요." : "합계에서 제외했어요.");
   render();
 });
 
