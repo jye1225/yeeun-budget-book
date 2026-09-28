@@ -46,6 +46,7 @@ let authUser = null;
 let authProfile = null;
 let authMode = "login";
 let checkedUsername = "";
+let pendingLegacyMigration = false;
 let realtimeChannel = null;
 let cloudSaveTimer = null;
 let applyingCloudState = false;
@@ -1117,6 +1118,8 @@ function subscribeToCloudChanges() {
 
 async function handleCloudSession(session) {
   if (!session?.user) {
+    const migratedFromEmailLogin = pendingLegacyMigration;
+    pendingLegacyMigration = false;
     authUser = null;
     authProfile = null;
     activeSyncUserId = null;
@@ -1125,6 +1128,18 @@ async function handleCloudSession(session) {
     realtimeChannel = null;
     setSyncStatus("idle", "로그인 필요", "로그인하면 여러 기기에서 같은 가계부를 볼 수 있어요.");
     showAuthScreen();
+    if (migratedFromEmailLogin) {
+      setAuthMode("signup");
+      setAuthMessage("새 아이디를 만들면 기존 가계부가 그대로 연결돼요.", "success");
+    }
+    return;
+  }
+
+  const sessionUsername = session.user.user_metadata?.username;
+  const isUsernameAccount = sessionUsername
+    && session.user.email === usernameToAuthEmail(sessionUsername);
+  if (!isUsernameAccount) {
+    await prepareLegacyLoginMigration(session.user);
     return;
   }
 
@@ -1140,6 +1155,33 @@ async function handleCloudSession(session) {
   subscribeToCloudChanges();
   render();
   showAppScreen();
+}
+
+async function prepareLegacyLoginMigration(user) {
+  let migrationState = state;
+  const { data, error } = await cloudClient
+    .from("budget_books")
+    .select("data")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (!error && data?.data) {
+    migrationState = mergeState(structuredClone(seedState), {
+      ...data.data,
+      selectedView: "home",
+      reportMonth: state.reportMonth,
+      reportFilter: state.reportFilter,
+      categoryTab: state.categoryTab
+    });
+  }
+
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(migrationState));
+  localStorage.removeItem(LEGACY_OWNER_KEY);
+  activeStorageKey = STORAGE_KEY;
+  activeSyncUserId = null;
+  pendingLegacyMigration = true;
+  await cloudClient.auth.signOut({ scope: "local" });
+  await handleCloudSession(null);
 }
 
 async function initializeCloudSync() {

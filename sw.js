@@ -1,10 +1,10 @@
-const CACHE_NAME = "yeeun-budget-book-v6";
+const CACHE_NAME = "yeeun-budget-book-v7";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./styles.css?v=18",
   "./supabase-config.js?v=1",
-  "./app.js?v=19",
+  "./app.js?v=20",
   "./manifest.webmanifest",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
