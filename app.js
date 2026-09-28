@@ -456,8 +456,7 @@ function renderTransactionDetail() {
   const dateLabel = new Intl.DateTimeFormat("ko-KR", {
     year: "numeric",
     month: "long",
-    day: "numeric",
-    weekday: "short"
+    day: "numeric"
   }).format(new Date(`${transaction.date}T00:00:00`));
 
   byId("transaction-detail-type").textContent = typeLabel;
