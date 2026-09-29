@@ -728,7 +728,10 @@ function renderSettings() {
   byId("category-list").innerHTML = state.categories[state.categoryTab]
     .map((category, index) => `
       <div class="item-row">
-        <span><i class="dot" style="background:${category.color}"></i> ${escapeHTML(category.name)}</span>
+        <span class="category-item-name">
+          <input class="category-color-input" type="color" value="${category.color}" data-category-color="${category.id}" aria-label="${escapeHTML(category.name)} 색상" title="${escapeHTML(category.name)} 색상 변경" />
+          <strong>${escapeHTML(category.name)}</strong>
+        </span>
         <div class="item-actions">
           <button class="small-button" type="button" data-action="move-category" data-direction="-1" data-category-id="${category.id}" ${index === 0 ? "disabled" : ""}>↑</button>
           <button class="small-button" type="button" data-action="move-category" data-direction="1" data-category-id="${category.id}" ${index === state.categories[state.categoryTab].length - 1 ? "disabled" : ""}>↓</button>
@@ -978,6 +981,7 @@ function addAccount(event) {
 function addCategory(event) {
   event.preventDefault();
   const input = byId("category-name-input");
+  const colorInput = byId("category-color-input");
   const name = input.value.trim();
   if (!name) {
     toast("카테고리 이름을 입력해 주세요.");
@@ -988,10 +992,23 @@ function addCategory(event) {
     toast("이미 있는 카테고리예요.");
     return;
   }
-  const color = colorPalette[list.length % colorPalette.length];
+  const color = /^#[0-9a-f]{6}$/i.test(colorInput.value)
+    ? colorInput.value
+    : colorPalette[list.length % colorPalette.length];
   list.push({ id: `category-${Date.now()}`, name, color });
   input.value = "";
+  colorInput.value = colorPalette[list.length % colorPalette.length];
   toast("카테고리를 추가했어요.");
+  render();
+}
+
+function updateCategoryColor(categoryId, color) {
+  if (!/^#[0-9a-f]{6}$/i.test(color)) return;
+  const category = state.categories[state.categoryTab]
+    .find((item) => item.id === categoryId);
+  if (!category) return;
+  category.color = color;
+  toast(`${category.name} 색상을 바꿨어요.`);
   render();
 }
 
@@ -1653,6 +1670,12 @@ document.querySelectorAll("[data-entry-type]").forEach((button) => {
 byId("hide-balance-toggle").addEventListener("change", (event) => {
   state.hideBalance = event.target.checked;
   render();
+});
+
+document.addEventListener("change", (event) => {
+  const colorInput = event.target.closest("[data-category-color]");
+  if (!colorInput) return;
+  updateCategoryColor(colorInput.dataset.categoryColor, colorInput.value);
 });
 
 byId("transaction-total-toggle").addEventListener("change", (event) => {

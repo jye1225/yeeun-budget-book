@@ -18,7 +18,7 @@
       crossorigin
       href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
     />
-    <link rel="stylesheet" href="./styles.css?v=22" />
+    <link rel="stylesheet" href="./styles.css?v=23" />
   </head>
   <body class="is-auth-loading">
     <section class="auth-screen" id="auth-screen" aria-label="로그인">
@@ -317,7 +317,7 @@
 
           <section class="settings-card">
             <button class="settings-row" type="button" data-action="toggle-categories">
-              <span>카테고리 순서 관리</span>
+              <span>카테고리 관리</span>
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
             </button>
             <div class="settings-body is-open" id="category-manager">
@@ -326,7 +326,8 @@
                 <button type="button" data-category-tab="income">수입</button>
               </div>
               <div class="manager-list" id="category-list"></div>
-              <form class="inline-form" id="category-form">
+              <form class="inline-form category-form" id="category-form">
+                <input class="category-color-input" type="color" id="category-color-input" value="#3a91ff" aria-label="새 카테고리 색상" title="새 카테고리 색상" />
                 <input type="text" id="category-name-input" placeholder="새 카테고리 이름" maxlength="12" />
                 <button type="submit">추가</button>
               </form>
@@ -451,6 +452,6 @@
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="./supabase-config.js?v=1"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="./app.js?v=24"></script>
+    <script src="./app.js?v=25"></script>
   </body>
 </html>
