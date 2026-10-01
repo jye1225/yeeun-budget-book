@@ -727,10 +727,10 @@ function renderSettings() {
 
   byId("category-list").innerHTML = state.categories[state.categoryTab]
     .map((category, index) => `
-      <div class="item-row">
+      <div class="item-row category-item-row">
         <span class="category-item-name">
           <input class="category-color-input" type="color" value="${category.color}" data-category-color="${category.id}" aria-label="${escapeHTML(category.name)} 색상" title="${escapeHTML(category.name)} 색상 변경" />
-          <strong>${escapeHTML(category.name)}</strong>
+          <input class="category-name-input" type="text" value="${escapeHTML(category.name)}" data-category-name="${category.id}" maxlength="12" aria-label="${escapeHTML(category.name)} 이름 수정" title="카테고리 이름 수정" />
         </span>
         <div class="item-actions">
           <button class="small-button" type="button" data-action="move-category" data-direction="-1" data-category-id="${category.id}" ${index === 0 ? "disabled" : ""}>↑</button>
@@ -1009,6 +1009,30 @@ function updateCategoryColor(categoryId, color) {
   if (!category) return;
   category.color = color;
   toast(`${category.name} 색상을 바꿨어요.`);
+  render();
+}
+
+function updateCategoryName(categoryId, nextName) {
+  const name = nextName.trim();
+  const list = state.categories[state.categoryTab];
+  const category = list.find((item) => item.id === categoryId);
+  if (!category) return;
+  if (!name) {
+    toast("카테고리 이름을 입력해 주세요.");
+    render();
+    return;
+  }
+  if (list.some((item) => item.id !== categoryId && item.name.toLocaleLowerCase("ko-KR") === name.toLocaleLowerCase("ko-KR"))) {
+    toast("이미 있는 카테고리예요.");
+    render();
+    return;
+  }
+  if (category.name === name) {
+    if (nextName !== name) render();
+    return;
+  }
+  category.name = name;
+  toast("카테고리 이름을 바꿨어요.");
   render();
 }
 
@@ -1673,9 +1697,21 @@ byId("hide-balance-toggle").addEventListener("change", (event) => {
 });
 
 document.addEventListener("change", (event) => {
+  const nameInput = event.target.closest("[data-category-name]");
+  if (nameInput) {
+    updateCategoryName(nameInput.dataset.categoryName, nameInput.value);
+    return;
+  }
   const colorInput = event.target.closest("[data-category-color]");
   if (!colorInput) return;
   updateCategoryColor(colorInput.dataset.categoryColor, colorInput.value);
+});
+
+document.addEventListener("keydown", (event) => {
+  const nameInput = event.target.closest("[data-category-name]");
+  if (!nameInput || event.key !== "Enter") return;
+  event.preventDefault();
+  nameInput.blur();
 });
 
 byId("transaction-total-toggle").addEventListener("change", (event) => {
